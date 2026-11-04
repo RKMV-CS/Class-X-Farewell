@@ -129,4 +129,5 @@ feature/<name>  --PR-->  main  --PR-->  release   (merge = new GitHub release wi
 - Work on a branch named after the feature, open a PR into `main`. CI runs the controller tests and a smoke render.
 - When the show is ready to render, open a PR `main` -> `release`. Only `main` may be merged into `release` (CI enforces it).
 - A push to `release` renders all segments on 2 Windows machines in parallel (`render/render-full.js --shard=I/N`), joins them (`--join`) and publishes `build-<run>` with the MP4 attached.
+- Each render segment is a separate file in `render/out/full`, so a failed publish can be re-run without re-rendering.
 - Test the pipeline without releasing: Actions -> Release render -> Run workflow, `only` = `000_idle_blur`.
