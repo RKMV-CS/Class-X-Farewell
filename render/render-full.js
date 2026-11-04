@@ -1,5 +1,5 @@
-// node render/render-full.js [--only=id,id] [--shard=I/N] [--join] [--keep-frames]
-// --shard=I/N renders every N-th segment (machine I of N, for CI); --join only concatenates segments already in out/full.
+// node render/render-full.js [--only=id,id] [--shard=I/N] [--join] [--list] [--keep-frames]
+// --shard=I/N renders machine I's balanced share of N (CI); --join only concatenates segments already in out/full.
 // One shareable MP4 of the whole show in review-hub order: blur idle -> store -> install -> open -> home -> library -> now playing ->
 // ad break -> ad playing -> every Guess Who student (mystery, reveal, dismiss) -> next song. 1920x1080, 60 fps, H.264 high quality.
 // Each segment is captured from a fresh page load (every prototype cue starts on the previous cue's last frame, same as the VLC clips),
@@ -38,6 +38,14 @@ for (let k = 0; k < students; k++) {
 }
 segs.push([`${String(9 + 3 * students).padStart(3, '0')}_nextsong`, { steps: [{ cue: NEXT, idle: 7 }], tail: 0 }]);
 
+// Machine I of N gets a longest-first greedy share of ALL segments by measured render time (shard-weights.json, local seconds), so every machine computes the same split.
+const W = require('./shard-weights.json');
+function mine(list) {
+  if (!sharded) return list;
+  const load = Array(shard[1]).fill(0), own = new Set(), w = id => W[id] || 300;
+  [...list].sort((a, b) => w(b[0]) - w(a[0]) || (a[0] < b[0] ? -1 : 1)).forEach(([id]) => { const j = load.indexOf(Math.min(...load)); load[j] += w(id); if (j === shard[0] - 1) own.add(id); });
+  return list.filter(([id]) => own.has(id));
+}
 const run = (cmd, a) => { const r = spawnSync(cmd, a, { encoding: 'utf8', maxBuffer: 1 << 26 }); if (r.status !== 0) throw new Error(`${path.basename(cmd)} failed:\n${(r.stderr || '').slice(-1500)}`); };
 async function one([id, def]) {
   const t0 = Date.now(), mp4 = path.join(SEG, id + '.mp4');
@@ -54,7 +62,8 @@ async function one([id, def]) {
 
 (async () => {
   fs.mkdirSync(SEG, { recursive: true });
-  const todo = joinOnly ? [] : segs.filter(([id]) => !only.length || only.some(o => id.includes(o))).filter((_, i) => !sharded || i % shard[1] === shard[0] - 1);
+  const todo = joinOnly ? [] : mine(segs).filter(([id]) => !only.length || only.some(o => id.includes(o)));
+  if (args.includes('--list')) { console.log(todo.map(s => s[0]).join(' ')); return; }
   const q = todo.slice(); let failed = 0;
   await Promise.all(Array.from({ length: Math.min(POOL, q.length) }, async () => { while (q.length) { const s = q.shift(); try { await one(s); } catch (e) { failed++; console.error(`[${s[0]}] FAILED: ${e.message}`); } } }));
   if (failed || only.length || sharded) { console.log(failed ? `${failed} segment(s) failed; not joining` : 'partial run; not joining'); process.exit(failed ? 1 : 0); }
