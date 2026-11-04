@@ -1,18 +1,20 @@
-// node render/render-full.js [--only=id,id] [--shard=I/N] [--join] [--list] [--keep-frames]
+// node render/render-full.js [--only=id,id] [--shard=I/N] [--join] [--list] [--out=file.mp4] [--music=track] [--keep-frames]
 // --shard=I/N renders machine I's balanced share of N (CI); --join only concatenates segments already in out/full.
 // One shareable MP4 of the whole show in review-hub order: blur idle -> store -> install -> open -> home -> library -> now playing ->
 // ad break -> ad playing -> every Guess Who student (mystery, reveal, dismiss) -> next song. 1920x1080, 60 fps, H.264 high quality.
 // Each segment is captured from a fresh page load (every prototype cue starts on the previous cue's last frame, same as the VLC clips),
-// encoded on its own, then joined with `-c copy`. Needs the review server (http://localhost:4000) or NDPIFY_URL. No audio (silent AAC track).
+// encoded on its own, then joined with `-c copy`. Needs the review server (http://localhost:4000) or NDPIFY_URL. Sound: UI effects (soundtrack.js) + optional --music bed.
 process.env.NDPIFY_FPS = '60';
 const fs = require('fs'), path = require('path');
 const { spawnSync } = require('child_process');
 const { capture, FPS } = require('./capture');
 
-const ROOT = __dirname, FR = path.join(ROOT, 'frames60'), SEG = path.join(ROOT, 'out', 'full'), OUT = path.join(ROOT, 'out', 'NDPify_full_1080p60.mp4');
+const args = process.argv.slice(2);
+const opt = n => (args.find(a => a.startsWith('--' + n + '=')) || '').slice(n.length + 3);   // --out=file.mp4, --music=track.webm
+const ROOT = __dirname, FR = path.join(ROOT, 'frames60'), SEG = path.join(ROOT, 'out', 'full'), OUT = path.resolve(ROOT, opt('out') || path.join('out', 'NDPify_full_1080p60.mp4'));
 const FFMPEG = path.join(ROOT, 'node_modules', '@remotion', 'compositor-win32-x64-msvc', 'ffmpeg.exe');
 const CRF = process.env.FULL_CRF || '15', POOL = +process.env.FULL_POOL || 3;
-const args = process.argv.slice(2), keep = args.includes('--keep-frames');
+const keep = args.includes('--keep-frames');
 const only = (args.find(a => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
 const shard = (args.find(a => a.startsWith('--shard=')) || '').slice(8).split('/').map(Number), sharded = shard.length === 2 && shard[1] > 0;
 const joinOnly = args.includes('--join');
@@ -71,7 +73,8 @@ async function one([id, def]) {
   if (missing.length) { console.error('cannot join, missing segments: ' + missing.join(', ')); process.exit(1); }
   const list = path.join(SEG, 'list.txt');
   fs.writeFileSync(list, segs.map(([id]) => `file '${path.join(SEG, id + '.mp4').replace(/\\/g, '/')}'`).join('\n') + '\n');
-  run(FFMPEG, ['-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', list, '-f', 'lavfi', '-i', 'anullsrc=r=48000:cl=stereo', '-map', '0:v', '-map', '1:a',
+  const wav = require('./soundtrack').soundtrack(FFMPEG, segs.map(([id]) => [id, path.join(SEG, id + '.mp4')]), path.join(ROOT, 'out', 'soundtrack.wav'), { music: opt('music') || undefined });
+  run(FFMPEG, ['-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', list, '-i', wav, '-map', '0:v', '-map', '1:a',
     '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', OUT]);
   console.log('done ->', OUT);
 })().catch(e => { console.error(e); process.exit(1); });
