@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NDPify - Guess Who (ad break)</title>
+<link rel="stylesheet" href="../guesswho/gw.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:#000;overflow:hidden;cursor:none}
+#stage{position:absolute;left:50%;top:50%;width:1920px;height:1080px;transform-origin:center center;overflow:hidden;background:#000}
+</style>
+</head>
+<body>
+<div id="stage"><div id="gw"></div></div>
+<script src="../guesswho/gw.js"></script>
+<script>
+/* ============ CONFIG: the only block you need to edit ============ */
+const GUESSWHO = {
+  guessHold: 6,    // s the mystery card + timer stay up before the reveal (max 10: the timer counts exactly this long)
+  revealHold: 3,   // s the name stays up after the reveal
+  enter: 0.9,      // card slides in
+  flip: 1.1,       // reveal flip
+  exit: 0.7,       // card slides out
+  gap: 0.3,        // idle beat between rounds
+  lead: 0.8,       // idle frame at start
+  tail: 0.8,       // idle frame at end (identical to start)
+  tag: 'Class 10', // muted line after the name; '' to hide
+  students: [      // then = mystery photo (shown vintage + soft), now = current look; pos = object-position; hint = optional line under the pill; photos = optional 2-3 child photos
+    { name: 'Piyush Kumar', then: 'img/then1.jpg', photos: ['img/then1.jpg', 'img/extra1.jpg'], now: 'img/p1.jpg', pos: '50% 28%' },
+    { name: 'Rishabh Das', then: 'img/then2.jpg', photos: ['img/then2.jpg', 'img/extra3.jpg'], now: '../img/artists/rishabh_das.jpg', pos: '50% 28%' },
+    { name: 'Satyaki Chakrabarti', then: 'img/then3.jpg', photos: ['img/then3.jpg', 'img/extra4.jpg'], now: '../img/artists/satyaki_chakrabarti.jpg', pos: '50% 28%' },
+    { name: 'Aishik Aich', then: 'img/then4.jpg', photos: ['img/then4.jpg', 'img/extra2.jpg'], now: '../img/artists/aishik_aich.jpg', pos: '50% 28%' },
+    { name: 'Angan Mandal', then: 'img/then1.jpg', photos: ['img/then1.jpg', 'img/extra4.jpg'], now: '../img/artists/angan_mandal.jpg', pos: '50% 28%' },
+    { name: 'Abhijnan Adhikary', then: 'img/then2.jpg', photos: ['img/then2.jpg', 'img/extra1.jpg'], now: '../img/artists/abhijnan_adhikary.jpg', pos: '50% 28%' },
+    { name: 'Soumyadeep Biswas', then: 'img/then3.jpg', photos: ['img/then3.jpg', 'img/extra2.jpg'], now: '../img/artists/soumyadeep_biswas.jpg', pos: '50% 28%' }
+  ],
+};
+/* ================================================================= */
+
+const C = GUESSWHO, N = C.students.length;
+window.READY = GW.mount(document.getElementById('gw'), { students: C.students, tag: C.tag, timing: C });
+const { ROUND, tFlip, tExit } = GW.timing;
+const T = C.lead + N * ROUND + (N - 1) * C.gap + C.tail;
+const startOf = (k) => C.lead + k * (ROUND + C.gap);
+const draw = (t) => C.students.forEach((_, k) => GW.draw(k, t - startOf(k)));
+
+// preview player: time follows rAF deltas (works with CDP virtual time and wall clock alike)
+let now = 0, playing = !/[?&]shot/.test(location.search), last = null;
+window.setT = (t) => { now = t; draw(t); };
+window.GUESSWHO_STUDENTS = C.students.map(s => s.name);
+window.GUESSWHO_INFO = { T, ROUND, starts: C.students.map((_, k) => startOf(k)), tFlip, tExit };
+window.READY = window.READY.then(() => draw(0));
+function fit() { const s = Math.min(innerWidth / 1920, innerHeight / 1080); document.getElementById('stage').style.transform = `translate(-50%,-50%) scale(${s})`; }
+addEventListener('resize', fit); fit(); draw(0);
+/* operator mode (?cue): each round is its own cue. It plays in, holds on the mystery until the operator presses a key, flips to the reveal,
+   holds again, then leaves. Space / Enter / click / ArrowRight = next step. ?round=N starts at round N (1-based). Without ?cue it autoplays as before. */
+const OP = /[?&]cue/.test(location.search); let opK = Math.max(0, (+(location.search.match(/[?&]round=(\d+)/) || [])[1] || 1) - 1), opL = 0, opHold = 0, opGo = false;
+const hud = document.createElement('div'); hud.style.cssText = 'position:fixed;left:50%;bottom:14px;transform:translateX(-50%);font:600 13px -apple-system,system-ui,sans-serif;color:#fff9;background:#0008;padding:6px 14px;border-radius:99px;pointer-events:none'; if (OP) document.body.appendChild(hud);
+const HINT = ['Space: reveal', 'Space: dismiss', ''];
+const step = () => { opGo = true; };
+addEventListener('keydown', (e) => { if ([' ', 'Enter', 'ArrowRight'].includes(e.key) || e.code === 'Space') { e.preventDefault(); step(); } }); addEventListener('click', () => OP && step());
+(function loop(ts) {
+  if (last != null && playing && OP) {
+    const dt = Math.min((ts - last) / 1000, .1), stops = [tFlip, tExit];
+    if (opHold < 2 && opL + dt >= stops[opHold]) { opL = stops[opHold]; if (opGo) { opHold++; opL += 1e-3; } }   // wait at the stop until released
+    else opL += dt;
+    opGo = false; hud.textContent = `Round ${opK + 1}/${N}  ${HINT[opHold] || ''}`;
+    if (opL >= ROUND) { GW.hideAll(); opK = (opK + 1) % N; opL = 0; opHold = 0; }
+    now = startOf(opK) + opL; GW.hideAll(); GW.draw(opK, opL);
+  } else if (last != null && playing) { now += Math.min((ts - last) / 1000, .1); if (now > T) now = /[?&]once/.test(location.search) ? T : 0; draw(now); }
+  last = ts; requestAnimationFrame(loop);
+})(performance.now());
+addEventListener('keydown', (e) => { if (OP) return; if (e.code === 'Space') playing = !playing; if (e.key === 'r') now = 0; if (e.key === 'ArrowRight') setT(now + 1); if (e.key === 'ArrowLeft') setT(Math.max(0, now - 1)); });
+</script>
+</body>
+</html>

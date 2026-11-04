@@ -1,0 +1,6 @@
+node_modules/
+clips/*.mp4
+start.generated.bat
+vlc.pid
+clips/.tmp/
+clips/.replaced/

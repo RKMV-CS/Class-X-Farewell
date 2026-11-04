@@ -1,0 +1,94 @@
+name: Release render
+
+# Merge main into release -> full 1080p60 show is rendered on 2 machines, joined, and published as a GitHub release.
+on:
+  push:
+    branches: [release]
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Test run: comma-separated segment ids (e.g. 000_idle_blur). Renders only those, no release."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+env:
+  SHARDS: 2           # machines; keep in sync with the matrix below
+  FULL_CRF: 15
+  FULL_POOL: 1        # parallel browsers per machine (runners have 7-16 GB)
+
+jobs:
+  render:
+    runs-on: windows-latest   # same fonts + ffmpeg build as the reviewed look
+    timeout-minutes: 350
+    strategy:
+      fail-fast: true
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Render deps
+        working-directory: render
+        run: |
+          npm ci
+          npx playwright-core install chromium
+      - name: Render shard ${{ matrix.shard }}/${{ env.SHARDS }}
+        shell: bash
+        env:
+          ONLY: ${{ inputs.only }}
+        run: |
+          node review/server.js 4000 &
+          sleep 3
+          cd render
+          node render-full.js --shard=${{ matrix.shard }}/$SHARDS ${ONLY:+--only=$ONLY}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: segments-${{ matrix.shard }}
+          path: render/out/full/*.mp4
+          if-no-files-found: ignore
+          retention-days: 2
+
+  publish:
+    needs: render
+    if: inputs.only == ''
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Render deps (ffmpeg only)
+        working-directory: render
+        run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: segments-*
+          path: render/out/full
+          merge-multiple: true
+      - name: Join segments
+        working-directory: render
+        run: node render-full.js --join
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          f=render/out/NDPify_full_1080p60.mp4
+          size=$(stat -c %s "$f")
+          echo "final size: $size bytes"
+          # GitHub release assets are capped at 2 GiB: fall back to a smaller encode of the same video
+          if [ "$size" -gt 2000000000 ]; then
+            ffmpeg=$(ls render/node_modules/@remotion/compositor-win32-x64-msvc/ffmpeg.exe)
+            "$ffmpeg" -y -v error -i "$f" -c:v libx264 -preset slow -crf 20 -c:a copy -movflags +faststart render/out/share.mp4
+            mv render/out/share.mp4 "$f"
+          fi
+          tag="build-${{ github.run_number }}"
+          gh release create "$tag" "$f" \
+            --target "${{ github.sha }}" \
+            --title "NDPify farewell show - build ${{ github.run_number }}" \
+            --notes "Full show, 1920x1080 @ 60 fps, H.264 (CRF ${FULL_CRF}), rendered from \`release\` at ${{ github.sha }}. Silent track: add music in the edit." \
+            --generate-notes

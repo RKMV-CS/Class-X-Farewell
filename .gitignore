@@ -1,0 +1,13 @@
+node_modules/
+# render outputs and scratch frames
+render/frames/
+render/frames60/
+render/out/
+controller/clips/
+music-candidates/
+# local tooling
+.playwright-mcp/
+graphify-out/
+review/state.json
+review/server.log
+*.part.mp4

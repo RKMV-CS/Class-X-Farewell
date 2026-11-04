@@ -1,0 +1,41 @@
+name: CI
+
+# Feature branch -> PR into main -> checks below. PR into release must come from main.
+on:
+  pull_request:
+    branches: [main, release]
+
+jobs:
+  release-source:
+    if: github.base_ref == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Only main may be merged into release
+        run: |
+          if [ "${{ github.head_ref }}" != "main" ]; then
+            echo "::error::PRs into release must come from main (got '${{ github.head_ref }}'). Merge your feature into main first."
+            exit 1
+          fi
+
+  check:
+    if: github.base_ref == 'main'
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Controller tests
+        working-directory: controller
+        run: npm ci && npm test
+      - name: Render deps
+        working-directory: render
+        run: |
+          npm ci
+          npx playwright-core install chromium
+      - name: Smoke render (blur idle segment, 60 fps)
+        shell: bash
+        run: |
+          node review/server.js 4000 &
+          sleep 3
+          cd render && FULL_POOL=1 node render-full.js --only=000_idle_blur

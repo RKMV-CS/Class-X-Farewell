@@ -1,0 +1,17 @@
+{
+  "name": "ndpify-render",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pre-render NDPify prototype cues to MP4 clips with Remotion",
+  "scripts": { "render": "node render.js" },
+  "dependencies": {
+    "@remotion/bundler": "4.0.539",
+    "@remotion/cli": "4.0.539",
+    "@remotion/renderer": "4.0.539",
+    "playwright-core": "1.60.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "remotion": "4.0.539",
+    "sharp": "^0.34.0"
+  }
+}

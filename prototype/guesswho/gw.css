@@ -1,0 +1,50 @@
+/* Guess Who component. Host gives .gw a 1920x1080 box; everything is laid out in those px. All selectors are .gw or .gw-*
+   Layout budget @1920x1080: card y44..814, pill y842..950, hint y968..1012 (68px safe margin below). */
+.gw{--gw-accent:#FFA41B;--gw-accent2:#E4572E;--gw-text:#F4F2EE;--gw-l2:#a1a1a6;position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;background:#000;color:var(--gw-text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,"Segoe UI Variable","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased;user-select:none}
+.gw *{box-sizing:border-box;margin:0;padding:0}
+
+/* background: warm static base + 4 soft colour blobs (aurora, like the hello scene). Blobs only ever get transform; calm at rest. */
+.gw-bg{position:absolute;inset:0;overflow:hidden;background:radial-gradient(60% 70% at 50% 0%,rgba(255,164,27,.34),transparent 70%),radial-gradient(55% 65% at 88% 100%,rgba(228,87,46,.3),transparent 70%),#09070a}
+.gw-bg::after{content:'';position:absolute;inset:0;background:radial-gradient(120% 100% at 50% 45%,transparent 55%,rgba(0,0,0,.42) 100%)}
+.gw-blob{position:absolute;border-radius:50%;will-change:transform}
+.gw-b1{width:1100px;height:900px;left:-200px;top:-330px;background:radial-gradient(closest-side,#FFA41B 0,transparent 100%);opacity:.5}
+.gw-b2{width:1000px;height:800px;right:-240px;top:90px;background:radial-gradient(closest-side,#ff5fa2 0,transparent 100%);opacity:.3}
+.gw-b3{width:1200px;height:900px;left:260px;bottom:-540px;background:radial-gradient(closest-side,#E4572E 0,transparent 100%);opacity:.5}
+.gw-b4{width:800px;height:700px;left:-220px;bottom:-160px;background:radial-gradient(closest-side,#6b5bff 0,transparent 100%);opacity:.26}
+
+.gw-slot{position:absolute;inset:0;visibility:hidden}
+.gw-glow{position:absolute;left:260px;top:-90px;width:1400px;height:1120px;background:radial-gradient(closest-side,rgba(255,150,30,.62),rgba(228,87,46,.2) 55%,transparent 100%);opacity:0;will-change:transform,opacity;pointer-events:none}
+.gw-card{position:absolute;left:652px;top:44px;width:616px;height:770px;perspective:2800px;will-change:transform,opacity}
+.gw-flip{position:absolute;inset:0;transform-style:preserve-3d;will-change:transform}
+.gw-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.gw-face.gw-now{transform:rotateY(180deg)}
+.gw-frame{position:absolute;inset:0;border-radius:48px;padding:14px;background:rgba(48,48,54,.82);box-shadow:0 44px 110px rgba(0,0,0,.55),0 10px 30px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.17),inset 0 1px 0 rgba(255,255,255,.3)}
+.gw-ph{position:relative;width:100%;height:100%;border-radius:34px;overflow:hidden;background:#17171c;isolation:isolate}
+.gw-ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;will-change:transform,opacity}
+.gw-kb{position:absolute;inset:0;will-change:transform}
+.gw-lay{position:absolute;inset:0;will-change:opacity}
+.gw-then .gw-sharp{filter:sepia(.5) saturate(.62) contrast(.86) brightness(1.05)}
+.gw-then .gw-soft{filter:sepia(.5) saturate(.62) contrast(.86) brightness(1.05) blur(14px);transform:scale(1.08)}
+.gw-then .gw-tint{position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,222,170,.16),rgba(90,48,16,.22)),radial-gradient(90% 80% at 50% 45%,transparent 55%,rgba(30,14,2,.38))}
+.gw-now .gw-tint{position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.05),transparent 30%,rgba(0,0,0,.14))}
+.gw-sheen{position:absolute;top:-10%;bottom:-10%;left:0;width:200px;margin-left:-260px;background:linear-gradient(100deg,transparent,rgba(255,255,255,.2) 50%,transparent);transform:skewX(-16deg);opacity:0;will-change:transform,opacity;pointer-events:none}
+
+/* name plate: translucent glass capsule (menubar/dock recipe) */
+.gw-plate{position:absolute;left:610px;top:842px;width:700px;height:108px;border-radius:54px;background:rgba(255,255,255,.12);-webkit-backdrop-filter:blur(40px) saturate(1.8);backdrop-filter:blur(40px) saturate(1.8);border:1px solid rgba(255,255,255,.2);box-shadow:0 22px 50px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.34);display:grid;place-items:center;will-change:transform,opacity}
+.gw-plate>div{grid-area:1/1;display:flex;align-items:baseline;gap:20px;white-space:nowrap;will-change:transform,opacity}
+.gw-pt{gap:0!important;font-size:60px;font-weight:700;letter-spacing:-.02em;color:#fff}
+.gw-pt i{font-style:normal;color:var(--gw-accent)}
+.gw-pn b{font-size:60px;font-weight:700;letter-spacing:-.02em;color:#fff}
+.gw-c{display:inline-block;will-change:transform,opacity}
+.gw-pn span.gw-tag{font-size:30px;font-weight:500;color:var(--gw-l2);letter-spacing:-.005em;will-change:transform,opacity}
+.gw-hint{position:absolute;left:460px;top:968px;width:1000px;text-align:center;font-size:32px;font-weight:500;letter-spacing:-.005em;color:rgba(255,255,255,.82);text-shadow:0 2px 18px rgba(0,0,0,.55);opacity:0;will-change:transform,opacity}
+
+/* guess timer: sticker disc right of the card; transform/opacity driven from gw.js (ring colour + dashoffset are the only paint changes) */
+.gw-timer{position:absolute;left:1336px;top:150px;width:260px;display:flex;flex-direction:column;align-items:center;gap:14px;opacity:0;will-change:transform,opacity;pointer-events:none}
+.gw-tdisc{position:relative;width:240px;height:240px;border-radius:50%;background:rgba(255,255,255,.14);-webkit-backdrop-filter:blur(30px) saturate(1.8);backdrop-filter:blur(30px) saturate(1.8);border:1px solid rgba(255,255,255,.28);box-shadow:0 26px 60px rgba(0,0,0,.45),inset 0 2px 0 rgba(255,255,255,.4)}
+.gw-tdisc svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.gw-tbase,.gw-tring{fill:none;stroke-width:11;stroke-linecap:round}
+.gw-tbase{stroke:rgba(255,255,255,.16)}
+.gw-tring{stroke:#ffd23f;stroke-dasharray:100 100;stroke-dashoffset:0}
+.gw-tn{position:absolute;inset:0;display:grid;place-items:center;font-size:118px;font-weight:900;letter-spacing:-.04em;color:#fff;text-shadow:0 6px 24px rgba(0,0,0,.4);font-family:"Arial Rounded MT Bold","Nunito","SF Pro Rounded",system-ui,sans-serif}
+.gw-tcap{font-size:34px;font-weight:800;letter-spacing:.02em;color:#1a0d02;background:#ffd23f;padding:6px 22px 8px;border-radius:30px;box-shadow:0 10px 24px rgba(0,0,0,.35);transform:rotate(4deg)}

@@ -1,0 +1,194 @@
+[
+  {
+    "id": "01_store_download",
+    "file": "01_store_download.mp4",
+    "mode": "hold",
+    "label": "Store: download app"
+  },
+  {
+    "id": "02_ndpify_open",
+    "file": "02_ndpify_open.mp4",
+    "mode": "hold",
+    "label": "Open NDPify"
+  },
+  {
+    "id": "03_home_trending",
+    "file": "03_home_trending.mp4",
+    "mode": "hold",
+    "label": "Home: trending"
+  },
+  {
+    "id": "04_library_playlist",
+    "file": "04_library_playlist.mp4",
+    "mode": "hold",
+    "label": "Library: playlist"
+  },
+  {
+    "id": "05_nowplaying_song1",
+    "file": "05_nowplaying_song1.mp4",
+    "mode": "loop",
+    "label": "Now playing: song 1 (loop)"
+  },
+  {
+    "id": "06_adbreak_intro",
+    "file": "06_adbreak_intro.mp4",
+    "mode": "hold",
+    "label": "Ad break intro"
+  },
+  {
+    "id": "07_ad_video",
+    "file": "07_ad_video.mp4",
+    "mode": "hold",
+    "label": "Ad video"
+  },
+  {
+    "id": "08_continuing_ad",
+    "file": "08_continuing_ad.mp4",
+    "mode": "hold",
+    "label": "Continuing after ad"
+  },
+  {
+    "id": "12_gw1_guess",
+    "file": "12_gw1_guess.mp4",
+    "mode": "hold",
+    "label": "Guess who 1 (Piyush Kumar): mystery, 10 s timer, held for the guess"
+  },
+  {
+    "id": "13_gw1_reveal",
+    "file": "13_gw1_reveal.mp4",
+    "mode": "hold",
+    "label": "Guess who 1 (Piyush Kumar): reveal, stays up until you press"
+  },
+  {
+    "id": "14_gw1_off",
+    "file": "14_gw1_off.mp4",
+    "mode": "hold",
+    "label": "Guess who 1 (Piyush Kumar): dismiss the card"
+  },
+  {
+    "id": "15_gw2_guess",
+    "file": "15_gw2_guess.mp4",
+    "mode": "hold",
+    "label": "Guess who 2 (Rishabh Das): mystery, 10 s timer, held for the guess"
+  },
+  {
+    "id": "16_gw2_reveal",
+    "file": "16_gw2_reveal.mp4",
+    "mode": "hold",
+    "label": "Guess who 2 (Rishabh Das): reveal, stays up until you press"
+  },
+  {
+    "id": "17_gw2_off",
+    "file": "17_gw2_off.mp4",
+    "mode": "hold",
+    "label": "Guess who 2 (Rishabh Das): dismiss the card"
+  },
+  {
+    "id": "18_gw3_guess",
+    "file": "18_gw3_guess.mp4",
+    "mode": "hold",
+    "label": "Guess who 3 (Satyaki Chakrabarti): mystery, 10 s timer, held for the guess"
+  },
+  {
+    "id": "19_gw3_reveal",
+    "file": "19_gw3_reveal.mp4",
+    "mode": "hold",
+    "label": "Guess who 3 (Satyaki Chakrabarti): reveal, stays up until you press"
+  },
+  {
+    "id": "20_gw3_off",
+    "file": "20_gw3_off.mp4",
+    "mode": "hold",
+    "label": "Guess who 3 (Satyaki Chakrabarti): dismiss the card"
+  },
+  {
+    "id": "21_gw4_guess",
+    "file": "21_gw4_guess.mp4",
+    "mode": "hold",
+    "label": "Guess who 4 (Aishik Aich): mystery, 10 s timer, held for the guess"
+  },
+  {
+    "id": "22_gw4_reveal",
+    "file": "22_gw4_reveal.mp4",
+    "mode": "hold",
+    "label": "Guess who 4 (Aishik Aich): reveal, stays up until you press"
+  },
+  {
+    "id": "23_gw4_off",
+    "file": "23_gw4_off.mp4",
+    "mode": "hold",
+    "label": "Guess who 4 (Aishik Aich): dismiss the card"
+  },
+  {
+    "id": "24_gw5_guess",
+    "file": "24_gw5_guess.mp4",
+    "mode": "hold",
+    "label": "Guess who 5 (Angan Mandal): mystery, 10 s timer, held for the guess"
+  },
+  {
+    "id": "25_gw5_reveal",
+    "file": "25_gw5_reveal.mp4",
+    "mode": "hold",
+    "label": "Guess who 5 (Angan Mandal): reveal, stays up until you press"
+  },
+  {
+    "id": "26_gw5_off",
+    "file": "26_gw5_off.mp4",
+    "mode": "hold",
+    "label": "Guess who 5 (Angan Mandal): dismiss the card"
+  },
+  {
+    "id": "27_gw6_guess",
+    "file": "27_gw6_guess.mp4",
+    "mode": "hold",
+    "label": "Guess who 6 (Abhijnan Adhikary): mystery, 10 s timer, held for the guess"
+  },
+  {
+    "id": "28_gw6_reveal",
+    "file": "28_gw6_reveal.mp4",
+    "mode": "hold",
+    "label": "Guess who 6 (Abhijnan Adhikary): reveal, stays up until you press"
+  },
+  {
+    "id": "29_gw6_off",
+    "file": "29_gw6_off.mp4",
+    "mode": "hold",
+    "label": "Guess who 6 (Abhijnan Adhikary): dismiss the card"
+  },
+  {
+    "id": "30_gw7_guess",
+    "file": "30_gw7_guess.mp4",
+    "mode": "hold",
+    "label": "Guess who 7 (Soumyadeep Biswas): mystery, 10 s timer, held for the guess"
+  },
+  {
+    "id": "31_gw7_reveal",
+    "file": "31_gw7_reveal.mp4",
+    "mode": "hold",
+    "label": "Guess who 7 (Soumyadeep Biswas): reveal, stays up until you press"
+  },
+  {
+    "id": "32_gw7_off",
+    "file": "32_gw7_off.mp4",
+    "mode": "hold",
+    "label": "Guess who 7 (Soumyadeep Biswas): dismiss the card"
+  },
+  {
+    "id": "09_nowplaying_song2",
+    "file": "09_nowplaying_song2.mp4",
+    "mode": "loop",
+    "label": "Now playing: song 2 (loop)"
+  },
+  {
+    "id": "10_extra_video_1",
+    "file": "10_extra_video_1.mp4",
+    "mode": "hold",
+    "label": "Extra video 1"
+  },
+  {
+    "id": "11_extra_video_2",
+    "file": "11_extra_video_2.mp4",
+    "mode": "hold",
+    "label": "Extra video 2"
+  }
+]

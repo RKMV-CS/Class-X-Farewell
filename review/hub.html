@@ -1,0 +1,70 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NDPify Review</title>
+<style>
+:root{--bg:#0b0b0d;--panel:#16161a;--line:#26262c;--fg:#f2f2f4;--dim:#8a8a94;--g:#1ed760;--y:#f5c542}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px system-ui,sans-serif;display:flex;height:100vh}
+aside{width:300px;background:var(--panel);border-right:1px solid var(--line);overflow:auto;flex:none}
+aside h1{font-size:15px;margin:0;padding:14px 16px;border-bottom:1px solid var(--line)}
+.row{padding:10px 16px;border-bottom:1px solid var(--line);cursor:pointer;display:flex;gap:10px;align-items:center}
+.row:hover{background:#1d1d22}.row.on{background:#23232a;box-shadow:inset 3px 0 var(--g)}
+.n{color:var(--dim);width:22px}.t{flex:1}.t small{display:block;color:var(--dim);font-size:11px}
+.dot{width:10px;height:10px;border-radius:50%;background:#444}.dot.ok{background:var(--g)}.dot.chg{background:var(--y)}
+main{flex:1;display:flex;flex-direction:column;min-width:0}
+.stage{flex:1;display:flex;align-items:center;justify-content:center;padding:12px;min-height:0}
+.frame{aspect-ratio:16/9;width:min(100%,calc((100vh - 150px)*16/9));background:#000;position:relative;overflow:hidden;border:1px solid var(--line)}
+iframe{position:absolute;left:0;top:0;width:1920px;height:1080px;border:0;transform-origin:0 0}
+.frame:fullscreen{border:0}
+.bar{border-top:1px solid var(--line);background:var(--panel);padding:10px 14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button{background:#25252c;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer;font:inherit}
+button:hover{background:#2f2f38}button.ok{background:#14532d;border-color:var(--g)}button.chg{background:#5a4510;border-color:var(--y)}
+input{flex:1;min-width:200px;background:#0f0f12;border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:8px 10px;font:inherit}
+.live{color:var(--dim);font-size:12px;margin-left:auto}
+@media(max-width:800px){body{flex-direction:column}aside{width:100%;height:150px}}
+</style></head><body>
+<aside><h1>NDPify clip review</h1><div id="list"></div></aside>
+<main>
+<div class="stage"><div class="frame" id="fr"><iframe id="f"></iframe></div></div>
+<div class="bar">
+<button onclick="step(-1)">&larr; Prev</button><button onclick="replay()">&#8635; Replay</button><button onclick="step(1)">Next &rarr;</button>
+<button onclick="fs()" title="Fullscreen (F)">&#x26F6; Fullscreen</button>
+<button class="ok" onclick="mark('ok')">&#10003; Approve</button><button class="chg" onclick="mark('chg')">Needs change</button>
+<input id="note" placeholder="Note for this clip (saved)" onchange="saveNote()">
+<span class="live" id="live">live</span>
+</div></main>
+<script>
+const clips=[
+['Idle: blurred (waiting)','00_idle_blur','i1'],['Idle: App Store open (held)','00_store_idle','i2'],
+['Store (idle)','01_store_download'],['Install','01_store_download'],['Desktop + open','02_ndpify_open'],['Home','03_home_trending'],
+['Library + playlist','04_library_playlist'],['Now playing (loop, 15-20m)','05_nowplaying_song1'],['Ad break','06_adbreak_intro'],
+['Ad playing (15-20m)','07_ad_video'],['Next song (loop, 15-20m)','09_nowplaying_song2'],['Ad break again','10_extra_video_1'],['Ad playing again','11_extra_video_2']];
+let cur=0,st={},mt=0;const f=document.getElementById('f');
+let gwDone=false;
+function addGw(){const a=api();if(gwDone||!a||!a.cues)return;gwDone=true;const cs=a.cues,ns=cs.findIndex(c=>c.name==='Next song');
+[['Next song (loop, 15-20m)','8',0],['Ad break again','9',1],['Ad playing again','10',2]].forEach(([l,k,o])=>{const r=clips.find(c=>c[0]===l);if(r&&ns>=0){r[2]=k;r[3]=ns+o}});
+const gw=[];cs.forEach((c,ci)=>{if(/^Guess who/.test(c.name)){const n=ci-8;gw.push([c.name,(12+n)+'_gw'+(Math.floor(n/3)+1)+'_'+['guess','reveal','off'][n%3],'gw'+ci,ci])}});
+clips.splice(clips.findIndex(c=>c[1]==='07_ad_video')+1,0,...gw);draw()}
+const key=i=>clips[i][2]||String(i-2);   // idle rows i1,i2 first; existing 11 keep numeric keys 0-10 (state.json untouched)
+const api=()=>f.contentWindow&&f.contentWindow.__ndpify;
+// Scale the 1920x1080 iframe to fit the frame and centre it (letterbox when the screen is not 16:9, e.g. fullscreen on a 16:10 tablet).
+function fit(){const fr=document.getElementById('fr'),w=fr.clientWidth,h=fr.clientHeight,s=Math.min(w/1920,h/1080);
+f.style.transform='translate('+(w-1920*s)/2+'px,'+(h-1080*s)/2+'px) scale('+s+')'}
+addEventListener('resize',fit);
+// Fullscreen the stage only (not the sidebar/toolbar). Esc exits natively.
+function fs(){const fr=document.getElementById('fr');if(document.fullscreenElement)document.exitFullscreen();else if(fr.requestFullscreen)fr.requestFullscreen().catch(()=>{})}
+document.addEventListener('fullscreenchange',fit);
+function draw(){document.getElementById('list').innerHTML=clips.map((c,i)=>{const s=st[key(i)]||{};
+return `<div class="row ${i===cur?'on':''}" onclick="go(${i})"><span class="n">${/^i\d/.test(c[2]||'')?c[2]:i-1}</span><span class="t">${c[0]}<small>${c[1]}.mp4${s.note?' - '+s.note.replace(/</g,'&lt;'):''}</small></span><span class="dot ${s.s||''}"></span></div>`}).join('');
+document.getElementById('note').value=(st[key(cur)]||{}).note||''}
+function go(i){cur=Math.max(0,Math.min(clips.length-1,i));draw();const a=api();a&&(clips[cur][3]!=null?a.go(clips[cur][3],0):clips[cur][2]?a.idle(clips[cur][2]==='i1'?'blur':'reveal'):a.go(+key(cur),0));location.hash=cur}
+function step(d){go(cur+d)}
+function replay(){go(cur)}
+function save(){fetch('/__state',{method:'POST',body:JSON.stringify(st)})}
+function mark(s){st[key(cur)]=Object.assign(st[key(cur)]||{},{s});save();draw()}
+function saveNote(){st[key(cur)]=Object.assign(st[key(cur)]||{},{note:document.getElementById('note').value});save();draw()}
+function load(){f.onload=()=>{addGw();fit();setTimeout(go.bind(0,cur),300)};f.src='/prototype/index.html?'+Date.now()}
+addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if(e.key==='ArrowRight')step(1);if(e.key==='ArrowLeft')step(-1);if(e.key==='f'||e.key==='F')fs()});
+(async()=>{st=await (await fetch('/__state')).json();cur=+location.hash.slice(1)||0;draw();load();fit();
+mt=+(await (await fetch('/__mtime')).text());
+setInterval(async()=>{try{const m=+(await (await fetch('/__mtime')).text());document.getElementById('live').textContent='live';
+if(m!==mt){mt=m;document.getElementById('live').textContent='updated, reloading';location.reload()}}catch(e){document.getElementById('live').textContent='offline'}},1000)})();
+</script></body></html>

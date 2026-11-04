@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>hello, ndp - handwriting preview</title>
+<style>
+:root{--w:1920px;--h:1080px}
+html,body{margin:0;height:100%;background:#05050d;overflow:hidden}
+#stage{position:absolute;left:0;top:0;width:var(--w);height:var(--h);overflow:hidden;transform-origin:0 0;background:#0a0a1c}
+/* Aurora: blurred colour blobs drifting on a deep indigo base (macOS wallpaper feel). transform only. */
+.blob{position:absolute;border-radius:50%;filter:blur(110px);opacity:.8;will-change:transform}
+#b1{width:1100px;height:900px;left:-250px;top:-300px;background:radial-gradient(circle,#5b4bff 0,transparent 68%)}
+#b2{width:1000px;height:800px;right:-200px;top:-200px;background:radial-gradient(circle,#ff5fa2 0,transparent 68%);opacity:.5}
+#b3{width:1200px;height:900px;left:300px;bottom:-480px;background:radial-gradient(circle,#2db8ff 0,transparent 68%);opacity:.55}
+#b4{width:800px;height:700px;right:100px;bottom:-250px;background:radial-gradient(circle,#ff9a4d 0,transparent 68%);opacity:.45}
+#vig{position:absolute;inset:0;background:radial-gradient(120% 100% at 50% 45%,transparent 45%,rgba(3,3,12,.62) 100%)}
+#grain{position:absolute;inset:0;opacity:.07;mix-blend-mode:overlay;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+svg{position:absolute;inset:0;width:100%;height:100%}
+.ink{fill:none;stroke-linecap:round;stroke-linejoin:round}
+</style></head>
+<body>
+<div id="stage">
+  <div class="blob" id="b1"></div><div class="blob" id="b2"></div><div class="blob" id="b3"></div><div class="blob" id="b4"></div>
+  <div id="vig"></div>
+  <svg viewBox="0 0 1920 1080" aria-label="hello, ndp">
+    <defs>
+      <!-- colour runs along the writing direction, so each letter appears already coloured -->
+      <linearGradient id="gInk" gradientUnits="userSpaceOnUse" x1="-30" y1="0" x2="860" y2="0">
+        <stop offset="0" stop-color="#ffe3c2"/><stop offset=".38" stop-color="#ffc2e0"/><stop offset=".7" stop-color="#d3c4ff"/><stop offset="1" stop-color="#a9dcff"/>
+      </linearGradient>
+      <linearGradient id="gShine" gradientUnits="userSpaceOnUse" x1="-400" y1="0" x2="0" y2="0">
+        <stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".95"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </linearGradient>
+      <filter id="fGlow" x="-20%" y="-30%" width="140%" height="160%"><feGaussianBlur stdDeviation="16"/></filter>
+      <filter id="fSoft" x="-20%" y="-30%" width="140%" height="160%"><feGaussianBlur stdDeviation="4"/></filter>
+    </defs>
+    <g id="txt"><!-- slanted writing group: translate + scale + skew set in script -->
+      <g id="glow" class="ink" filter="url(#fGlow)" stroke="#ffd0ea"></g>
+      <g id="main" class="ink" stroke="url(#gInk)"></g>
+      <g id="shine" class="ink" stroke="url(#gShine)"></g>
+    </g>
+  </svg>
+</div>
+<script>
+/* ---- pen paths: centre-line waypoints in design units (x-height = 100, baseline = 0, up = negative), drawn upright then skewed ---- */
+const P = (ox, oy, pts) => pts.map(([x, y]) => [x + ox, y + oy]);
+const L = ox => P(ox, 0, [[0,-32],[10,-58],[22,-108],[34,-164],[44,-204],[50,-226],[46,-240],[34,-240],[27,-222],[27,-178],[30,-124],[34,-68],[37,-24],[42,-4],[52,-6],[62,-32]]); // l: loop up, stem down, exit
+const hello = [].concat(
+  // h: lead-in, ascender loop, stem, arch
+  P(0, 0, [[-18,-6],[-4,-40],[12,-96],[28,-154],[40,-200],[48,-226],[42,-242],[30,-240],[23,-218],[23,-172],[26,-118],[30,-64],[32,-22],[36,-2],[42,-14],[46,-48],[52,-80],[66,-100],[84,-98],[96,-78],[98,-50],[98,-22],[102,-4],[112,-4]]),
+  // e: small loop
+  P(124, 0, [[0,-24],[12,-44],[27,-64],[40,-84],[46,-98],[38,-108],[24,-102],[16,-82],[17,-54],[25,-28],[39,-10],[55,-6],[68,-18],[78,-32]]),
+  L(202), L(264),
+  // o: closed oval, ends with an exit tail
+  P(326, 0, [[0,-32],[12,-62],[28,-92],[40,-103],[30,-109],[16,-100],[6,-72],[8,-36],[22,-10],[40,-6],[52,-30],[54,-62],[44,-92],[34,-103],[48,-103],[66,-99],[82,-104]])
+);
+const comma = P(412, 0, [[0,-10],[5,-2],[3,14],[-6,30],[-16,40]]);
+const nd = [].concat(
+  P(528, 0, [[0,-6],[10,-44],[18,-82],[24,-100],[26,-70],[28,-30],[32,-4],[37,-22],[42,-60],[50,-92],[64,-104],[78,-96],[84,-70],[84,-36],[88,-6],[98,-4],[110,-30]]),
+  // d: bowl, then tall stem loop
+  P(638, 0, [[0,-30],[12,-62],[28,-90],[40,-100],[30,-106],[16,-96],[6,-66],[10,-30],[26,-8],[44,-14],[54,-46],[56,-90],[60,-150],[66,-200],[72,-232],[66,-246],[54,-242],[48,-216],[50,-170],[53,-110],[56,-60],[58,-22],[63,-4],[74,-8],[88,-28]])
+);
+const p = P(754, 0, [[-4,-102],[0,-64],[4,-12],[8,40],[8,76],[-2,94],[-14,90],[-14,72],[-4,44],[6,0],[12,-50],[20,-92],[38,-104],[56,-90],[62,-58],[52,-26],[34,-10],[18,-16],[10,-30]]);
+const STROKES = [hello, comma, nd, p];
+
+/* Catmull-Rom through waypoints -> cubic bezier path string (k = tangent scale) */
+function cr(pts, k = 1) {
+  let d = `M${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i - 1] || pts[i], b = pts[i], c = pts[i + 1], e = pts[i + 2] || c;
+    d += `C${(b[0] + (c[0] - a[0]) * k / 6).toFixed(1)} ${(b[1] + (c[1] - a[1]) * k / 6).toFixed(1)} ${(c[0] - (e[0] - b[0]) * k / 6).toFixed(1)} ${(c[1] - (e[1] - b[1]) * k / 6).toFixed(1)} ${c[0]} ${c[1]}`;
+  }
+  return d;
+}
+
+/* ---- layout: design units -> 1920x1080 ---- */
+const SCALE = 1.68, SLANT = -9, STROKE_W = 11;
+const BOX = { x0: -30, x1: 860, y0: -250, y1: 100 };           // design-unit bounding box of the word
+const tx = 960 - ((BOX.x0 + BOX.x1) / 2) * SCALE, ty = 540 - ((BOX.y0 + BOX.y1) / 2) * SCALE;
+const NS = 'http://www.w3.org/2000/svg';
+const txt = document.getElementById('txt');
+txt.setAttribute('transform', `translate(${tx} ${ty}) scale(${SCALE}) skewX(${SLANT})`);
+
+const layers = ['glow', 'main', 'shine'].map(id => document.getElementById(id));
+const sw = { glow: STROKE_W * 1.9, main: STROKE_W, shine: STROKE_W * .8 };
+const els = STROKES.map(pts => layers.map(g => {
+  const el = document.createElementNS(NS, 'path');
+  el.setAttribute('d', cr(pts)); el.setAttribute('pathLength', '1');
+  el.setAttribute('stroke-width', sw[g.id]); el.setAttribute('stroke-dasharray', '1 2');
+  g.appendChild(el); return el;
+}));
+
+/* ---- timeline: one pen, constant-ish speed, a lift between strokes ---- */
+const SPEED = 720, LIFT = 0.3, T0 = 0.6;                     // design units / s, s, s before first stroke
+const lens = STROKES.map(pts => { const t = document.createElementNS(NS, 'path'); t.setAttribute('d', cr(pts)); return t.getTotalLength(); }); // real length in design units (no pathLength)
+const plan = []; let t = T0;
+lens.forEach((len, i) => { const dur = Math.max(.35, len / SPEED); plan.push({ s: t, d: dur }); t += dur + LIFT; });
+const T_WRITE_END = plan[plan.length - 1].s + plan[plan.length - 1].d;   // seconds
+const smooth = x => x * x * (3 - 2 * x);
+const ease = x => x + (smooth(x) - x) * .5;                              // mostly constant pen speed, soft start/stop per stroke
+const easeIO = x => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2; // for the shine sweep
+const mix = (a, b, x) => a + (b - a) * x;
+const clamp = x => Math.max(0, Math.min(1, x));
+
+const stage = document.getElementById('stage'), shineGrad = document.getElementById('gShine'), blobs = ['b1', 'b2', 'b3', 'b4'].map(id => document.getElementById(id));
+const glowLayer = document.getElementById('glow');
+
+/* deterministic frame at time t (seconds): the page plays itself with rAF, and the preview renderer calls setT(i/30) */
+function setT(t) {
+  plan.forEach((s, i) => {
+    const pr = clamp((t - s.s) / s.d), off = 1 - ease(pr);
+    els[i].forEach((el, li) => {
+      el.setAttribute('stroke-dashoffset', off);
+      el.style.opacity = pr <= 0 ? 0 : (li === 2 ? 0 : 1);       // shine layer stays hidden until the sweep
+    });
+  });
+  // shine: one light band sweeps across the finished word
+  const sp = clamp((t - (T_WRITE_END + .25)) / 1.25), sx = mix(-320, 1100, easeIO(sp));   // design units (the gradient lives inside the scaled group)
+  const showShine = sp > 0 && sp < 1;
+  els.forEach(([, , sh]) => { sh.style.opacity = showShine ? 1 : 0; });
+  shineGrad.setAttribute('x1', sx - 170); shineGrad.setAttribute('x2', sx + 90);
+  // glow breathes in as writing finishes, then rests
+  glowLayer.style.opacity = mix(.5, .9, clamp((t - T_WRITE_END) / 1.2)) * (1 - .12 * Math.sin(Math.max(0, t - T_WRITE_END - 1.4) * 1.6));
+  // aurora drifts (translate only)
+  const dr = [[40, 25], [-35, 20], [30, -35], [-25, -20]];
+  blobs.forEach((b, i) => b.style.transform = `translate(${Math.sin(t * .35 + i * 1.7) * dr[i][0] * 2}px,${Math.cos(t * .3 + i * 2.1) * dr[i][1] * 2}px) scale(${1 + .05 * Math.sin(t * .4 + i)})`);
+}
+window.setT = setT; window.HELLO = { plan, T_WRITE_END, lens };
+
+const q = new URLSearchParams(location.search);
+function fit() { const s = Math.min(innerWidth / 1920, innerHeight / 1080); stage.style.transform = `scale(${s})`; }
+if (q.has('shot')) { setT(+q.get('shot')); }                       // ?shot=seconds -> frozen frame (used by the preview renderer)
+else if (q.has('static')) { setT(99); }                            // ?static=1 -> finished word
+else { fit(); addEventListener('resize', fit); const t0 = performance.now(); (function loop(n) { setT((n - t0) / 1000); requestAnimationFrame(loop); })(t0); }
+</script>
+</body></html>

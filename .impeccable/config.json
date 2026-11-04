@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "radial-halo",
+        "value": "*",
+        "files": [
+          "prototype/guesswho-preview/index.html"
+        ],
+        "createdAt": "2026-11-04T03:49:14.365Z",
+        "reason": "intentional: user asked for the richer colour glow (Guess Who options 1-2, 'do all the improvements') to match the ad-break and hello scenes"
+      }
+    ]
+  }
+}

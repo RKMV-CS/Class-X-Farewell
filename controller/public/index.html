@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0c11">
+<title>NDPify Operator</title>
+<link rel="icon" href="data:,">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0a0c11; --panel:#12161e; --panel2:#1a202b; --line:#283042;
+  --text:#eef1f7; --mute:#9aa4b8;
+  --go:#34d17a; --go-ink:#03170b; --amber:#ffb23e; --loop:#5cc4ff; --red:#ff5d62; --focus:#8ab4ff;
+  --disp:"Bahnschrift","DIN Alternate","Roboto Condensed",sans-serif-condensed,"Arial Narrow",system-ui,sans-serif;
+  --body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --dock:12rem;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--text);font:400 1rem/1.4 var(--body);
+  padding-bottom:calc(var(--dock) + env(safe-area-inset-bottom));-webkit-text-size-adjust:100%}
+button,select{font:inherit;color:inherit;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+button{cursor:pointer;border:0}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+h1,h2{margin:0}
+[hidden]{display:none!important}
+
+/* header */
+.top{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);
+  padding:.6rem 1rem .5rem;padding-top:calc(.6rem + env(safe-area-inset-top))}
+.row1{display:flex;align-items:center;justify-content:space-between;gap:.75rem}
+.conn{display:flex;align-items:center;gap:.5rem;font-size:.85rem;color:var(--mute);min-width:0}
+.dot{width:.7rem;height:.7rem;border-radius:50%;background:var(--red);flex:none}
+.dot.on{background:var(--go)}
+.pos{font:700 1.7rem/1 var(--disp);font-variant-numeric:tabular-nums}
+.pos span{color:var(--mute);font-weight:400}
+.pill{font:700 .8rem/1 var(--disp);letter-spacing:.06em;padding:.45rem .65rem;border-radius:2rem;border:1.5px solid var(--mute);color:var(--mute);white-space:nowrap}
+.pill[data-s=playing]{color:var(--go);border-color:var(--go)}
+.pill[data-s=paused]{color:var(--amber);border-color:var(--amber)}
+.pill[data-s=offline]{color:var(--red);border-color:var(--red)}
+.prog{display:flex;align-items:center;gap:.6rem;margin-top:.55rem;font:600 .85rem/1 var(--disp);font-variant-numeric:tabular-nums;color:var(--mute)}
+.bar{flex:1;height:.3rem;background:var(--panel2);border-radius:1rem;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--go);transform-origin:left;transform:scaleX(0);transition:transform 1s linear}
+.ticks{display:flex;gap:2px;margin-top:.5rem;height:.3rem}
+.ticks i{flex:1;background:var(--line);border-radius:1px}
+.ticks i.past{background:#5b667d}
+.ticks i.cur{background:var(--go)}
+
+/* banner / note */
+.banner{display:flex;align-items:flex-start;gap:.75rem;margin:.6rem 1rem 0;padding:.7rem .8rem;border-radius:.6rem;
+  background:#3a1518;border:1px solid var(--red);color:#ffd9da}
+.banner span{flex:1;overflow-wrap:anywhere}
+.banner button{background:transparent;border:1.5px solid currentColor;border-radius:.5rem;min-width:2.75rem;min-height:2.75rem;padding:0 .7rem;font-weight:600}
+
+/* hero */
+.hero{padding:1.1rem 1rem .6rem}
+.tag{font-size:.85rem;color:var(--mute)}
+.nowrow{display:flex;align-items:center;gap:.6rem}
+.tally{width:.6rem;height:.6rem;border-radius:50%;background:var(--line)}
+.tally.live{background:var(--red)}
+.badge{font:700 .72rem/1 var(--disp);letter-spacing:.08em;padding:.35rem .5rem;border-radius:.35rem;border:1.5px solid}
+.badge.loop{color:var(--loop)} .badge.hold{color:var(--amber)}
+#nowLabel{font:700 clamp(2rem,9vw,3.2rem)/1.05 var(--disp);margin:.3rem 0 .7rem;overflow-wrap:anywhere}
+.nextrow{display:flex;align-items:baseline;gap:.6rem;font-size:1.1rem}
+#nextLabel{color:#cfe3ff;overflow-wrap:anywhere}
+.note{min-height:1.4rem;padding:0 1rem;color:var(--amber);font-size:.9rem;opacity:0;transition:opacity .2s}
+.note.show{opacity:1}
+
+/* dock */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem;
+  padding:.7rem 1rem calc(.7rem + env(safe-area-inset-bottom));background:var(--panel);border-top:1px solid var(--line)}
+.dock button{border-radius:1rem;min-height:4rem;background:var(--panel2);border:1.5px solid var(--line);
+  font:700 1.15rem/1 var(--disp);letter-spacing:.05em;transition:transform .08s}
+.dock button:active,.dock button.hit{transform:scale(.97)}
+.dock .fs{grid-column:1/-1;min-height:3.2rem;letter-spacing:.06em}
+.dock .go{grid-column:1/-1;min-height:5.8rem;background:var(--go);color:var(--go-ink);border-color:var(--go);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.35rem}
+.go .main{font-size:2.6rem;letter-spacing:.08em;line-height:1}
+.go .sub{font:600 .9rem/1 var(--body);letter-spacing:0;opacity:.85}
+#pause.is-paused{background:var(--amber);color:#201400;border-color:var(--amber)}
+
+/* preview */
+.preview{padding:.9rem 1rem 0}
+.phead,.chead{display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap}
+h2{font:700 1.15rem/1.2 var(--disp);letter-spacing:.03em}
+.pctl{display:flex;gap:.5rem;align-items:center;min-width:0;flex:1 1 100%}
+.pctl select{flex:1}
+select{background:var(--panel2);border:1.5px solid var(--line);border-radius:.6rem;min-height:2.75rem;padding:0 .6rem;max-width:100%;min-width:0}
+.tog{white-space:nowrap;background:var(--panel2);border:1.5px solid var(--line);border-radius:.6rem;min-height:2.75rem;padding:0 .8rem;font-weight:600}
+.tog[aria-pressed=true]{border-color:var(--go);color:var(--go)}
+.frame{position:relative;margin-top:.6rem;aspect-ratio:16/9;background:#000;border:1px solid var(--line);border-radius:.6rem;overflow:hidden}
+.frame img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transition:opacity .2s}
+.frame img.stale{opacity:.45}
+.ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:1rem;color:var(--mute);font-size:.9rem}
+.ago{margin-top:.4rem;font-size:.85rem;color:var(--mute);min-height:1.2rem}
+
+/* cues */
+.cues{padding:1.1rem 1rem 0}
+.chead small{color:var(--mute)}
+.list{list-style:none;margin:.6rem 0 0;padding:0;position:relative;max-height:min(55vh,32rem);overflow-y:auto;overscroll-behavior:contain;
+  border:1px solid var(--line);border-radius:.8rem;background:var(--panel)}
+.list li+li{border-top:1px solid var(--line)}
+.cue{position:relative;display:grid;grid-template-columns:2.2rem 1fr auto;align-items:center;gap:.6rem;width:100%;min-height:3.6rem;
+  padding:.5rem .9rem .5rem .8rem;background:transparent;text-align:left;overflow:hidden}
+.cue:focus-visible{outline-offset:-4px}
+.cue .n{font:700 1.05rem/1 var(--disp);color:var(--mute);font-variant-numeric:tabular-nums}
+.cue .lab{overflow-wrap:anywhere}
+.cue .arm{display:none;max-width:7rem;text-align:right;font-weight:700;font-size:.85rem;color:var(--amber)}
+.cue.past{opacity:.5}
+.cue.cur{background:#10301f;box-shadow:inset .3rem 0 0 var(--go)}
+.cue.cur .n{color:var(--go)} .cue.cur .lab{font-weight:700}
+.cue.armed{background:#3a2a07;box-shadow:inset 0 0 0 2px var(--amber);opacity:1}
+.cue.armed .badge{display:none} .cue.armed .arm{display:block}
+.fuse{position:absolute;left:0;right:0;bottom:0;height:.2rem;background:var(--amber);transform-origin:left;display:none}
+.cue.armed .fuse{display:block;animation:fuse 3s linear forwards}
+@keyframes fuse{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+.empty{padding:1rem;color:var(--mute)}
+
+/* per-cue file tools */
+.tools{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem .6rem;padding:0 .9rem .6rem 3.6rem;margin-top:-.15rem}
+.meta{flex:1 1 12rem;min-width:0;font-size:.8rem;color:var(--mute);overflow-wrap:anywhere}
+.badge.missing{color:var(--red);margin-right:.4rem;display:inline-block}
+.acts{display:flex;gap:.4rem}
+.mini{background:var(--panel2);border:1.5px solid var(--line);border-radius:.5rem;min-height:2.75rem;padding:0 .7rem;font:600 .8rem/1 var(--disp);letter-spacing:.04em;white-space:nowrap}
+.mini.loop{border-color:var(--loop);color:var(--loop)}
+.mini:disabled{opacity:.45;cursor:default}
+.upl{flex:1 1 100%;display:flex;align-items:center;gap:.6rem;font-size:.8rem;color:var(--text)}
+.upl .bar{height:.45rem}
+.upl .bar i{transition:none}
+
+/* toast + modal */
+.toast{position:fixed;left:1rem;right:1rem;top:calc(4.8rem + env(safe-area-inset-top));z-index:20;margin:0 auto;max-width:34rem;padding:.7rem .9rem;border-radius:.6rem;
+  background:#10301f;border:1px solid var(--go);color:#d6ffe6;opacity:0;transform:translateY(-.5rem);pointer-events:none;transition:opacity .2s,transform .2s;overflow-wrap:anywhere}
+.toast.show{opacity:1;transform:none}
+.toast.err{background:#3a1518;border-color:var(--red);color:#ffd9da}
+.modal{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;padding:1rem;background:rgba(0,0,0,.7)}
+.modal .box{width:100%;max-width:26rem;background:var(--panel);border:1px solid var(--line);border-radius:.8rem;padding:1.1rem}
+.modal p{margin:.4rem 0 1rem;overflow-wrap:anywhere}
+.modal .btns{display:flex;gap:.6rem;justify-content:flex-end}
+.modal .btns button{min-height:2.9rem;padding:0 1rem;border-radius:.6rem;background:var(--panel2);border:1.5px solid var(--line);font-weight:700}
+.modal .btns .danger{background:var(--amber);color:#201400;border-color:var(--amber)}
+
+footer{padding:1.2rem 1rem 1rem;color:var(--mute);font-size:.85rem;display:grid;gap:.3rem}
+footer .warn{color:var(--amber)}
+.keys{display:none}
+kbd{font:600 .8rem var(--disp);padding:.15rem .4rem;border:1px solid var(--line);border-bottom-width:2px;border-radius:.3rem;background:var(--panel2);color:var(--text)}
+
+.app{display:flex;flex-direction:column}
+.stage{display:contents}
+.preview{order:2}.cues{order:1}
+/* laptop landscape */
+@media (min-width:900px) and (orientation:landscape){
+  body{height:100dvh;display:flex;flex-direction:column;padding-bottom:0;overflow:hidden}
+  .top{position:static}
+  .app{flex:1;min-height:0;flex-direction:row;display:grid;grid-template-columns:minmax(0,1fr) minmax(22rem,30rem)}
+  .preview,.cues{order:0}
+  .stage{display:flex;flex-direction:column;min-height:0;overflow-y:auto;padding:0 .5rem 0 0}
+  .hero{padding:1.4rem 1.5rem .6rem}
+  #nowLabel{font-size:clamp(2.6rem,5vw,4.5rem)}
+  .dock{position:static;background:transparent;border:0;margin:0 1.5rem;padding:.6rem 0;grid-template-columns:1fr 1fr 1fr}
+  .dock .go{min-height:6.5rem}
+  .preview{flex:1;min-height:12rem;display:flex;flex-direction:column;padding:.6rem 1.5rem 0}
+  .frame{flex:1;aspect-ratio:auto;min-height:8rem}
+  .cues{display:flex;flex-direction:column;min-height:0;padding:1.2rem 1.5rem 0 .5rem}
+  .list{flex:1;max-height:none}
+  footer{padding:.6rem 1.5rem .8rem;grid-template-columns:auto auto 1fr;gap:.3rem 1.5rem;align-items:center;border-top:1px solid var(--line)}
+  .keys{display:block;text-align:right}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
+}
+</style></head><body>
+
+<header class="top">
+  <div class="row1">
+    <div class="conn"><i class="dot" id="dot"></i><span id="connTxt">Connecting</span></div>
+    <div class="pos" role="status" aria-label="Cue position"><b id="posN">-</b><span>/<span id="posT">-</span></span></div>
+    <span class="pill" id="pill" data-s="offline">VLC ?</span>
+  </div>
+  <div class="prog"><span id="tCur">--:--</span><div class="bar"><i id="barFill"></i></div><span id="tLen">--:--</span></div>
+  <div class="ticks" id="ticks" aria-hidden="true"></div>
+</header>
+
+<div class="banner" id="banner" role="alert" hidden><span id="bannerTxt"></span><button type="button" id="bannerX" aria-label="Dismiss message">Dismiss</button></div>
+
+<div class="app">
+  <main class="stage">
+    <section class="hero" aria-live="polite" aria-atomic="true">
+      <div class="nowrow"><i class="tally" id="tally"></i><span class="tag">Now</span><span class="badge" id="nowBadge" hidden></span></div>
+      <h1 id="nowLabel">Not started</h1>
+      <div class="nextrow"><span class="tag">Next</span><span id="nextLabel">-</span></div>
+    </section>
+    <div class="note" id="note" role="status"></div>
+
+    <nav class="dock" id="dock" aria-label="Playback controls">
+      <button type="button" class="go" id="next"><span class="main">NEXT</span><span class="sub" id="nextSub">Starts the show</span></button>
+      <button type="button" id="prev">PREV</button>
+      <button type="button" id="replay">REPLAY</button>
+      <button type="button" id="pause">PAUSE</button>
+      <button type="button" class="fs" id="fsBtn">FULLSCREEN</button>
+    </nav>
+
+    <section class="preview" aria-label="Projector preview">
+      <div class="phead">
+        <h2>Projector preview</h2>
+        <div class="pctl">
+          <select id="screen" aria-label="Display to preview" hidden></select>
+          <button type="button" class="tog" id="pvToggle" aria-pressed="true">Preview ON</button>
+        </div>
+      </div>
+      <div class="frame" id="frame">
+        <img id="shot" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="Live capture of the projector display" hidden>
+        <div class="ph" id="ph">Waiting for first frame</div>
+      </div>
+      <div class="ago" id="ago"></div>
+    </section>
+  </main>
+
+  <section class="cues" aria-label="Cue list">
+    <div class="chead"><h2>Cues</h2><small>Tap a cue twice to jump</small></div>
+    <input type="file" id="pick" accept="video/*" hidden>
+    <ol class="list" id="list"><li class="empty">Loading cues</li></ol>
+  </section>
+</div>
+
+<footer>
+  <span>Operator view - not shown on the projector</span>
+  <span class="warn">Remote has no password: use only on a private network</span>
+  <span class="hint" style="grid-column:1/-1">Custom videos (ads etc.): 1920x1080, H.264/AAC, start and end on the same idle frame as the neighbouring clips; music and ad cues should be 15-20 min. Replace files before the show, not during it (a big upload slows the laptop). The previous file is kept in clips/.replaced/.</span>
+  <span class="keys"><kbd>Space</kbd> <kbd>&rarr;</kbd> next &nbsp; <kbd>&larr;</kbd> prev &nbsp; <kbd>R</kbd> replay &nbsp; <kbd>P</kbd> pause</span>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTxt" hidden>
+  <div class="box"><p id="modalTxt"></p><div class="btns"><button type="button" id="modalNo">Cancel</button><button type="button" class="danger" id="modalYes">Replace anyway</button></div></div>
+</div>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const ls={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const buzz=()=>{try{navigator.vibrate&&navigator.vibrate(30)}catch(e){}};
+const reduce=matchMedia('(prefers-reduced-motion: reduce)');
+const fmt=s=>{s=Math.max(0,Math.floor(s));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
+function setText(el,t){if(el.textContent!==t)el.textContent=t}
+
+async function api(path,opts,ms){
+  const c=new AbortController(),t=setTimeout(()=>c.abort(),ms||4000);
+  try{const r=await fetch(path,Object.assign({cache:'no-store',signal:c.signal},opts));return await r.json()}
+  finally{clearTimeout(t)}
+}
+
+/* ---------- state ---------- */
+let st=null, cues=[], online=null, stamp=0, lastIdx=-2, errState='', errVlc='', postErr='', dismissed='';
+let vlcState='';
+
+function setOnline(ok){
+  if(online===ok)return; online=ok;
+  $('dot').classList.toggle('on',ok);
+  setText($('connTxt'),ok?'Connected':'No connection');
+  if(!ok){setPill('offline','VLC ?')}
+}
+function setPill(s,t){const p=$('pill');p.dataset.s=s;setText(p,t)}
+
+function applyState(s){
+  st=s;
+  const cur=s.current,nxt=s.next;
+  setText($('posN'),s.index<0?'-':String(s.index+1));
+  setText($('posT'),String(s.total));
+  setText($('nowLabel'),cur?cur.label:'Not started');
+  const b=$('nowBadge');
+  if(cur){b.hidden=false;b.className='badge '+cur.mode;setText(b,cur.mode==='loop'?'LOOP':'HOLD')}else b.hidden=true;
+  setText($('nextLabel'),nxt?nxt.label:(s.index<0?'-':'End of show'));
+  setText($('nextSub'),s.index<0?'Starts the show':(nxt?'Cue '+(s.index+2):'End of show'));
+  if(cues.length!==s.total)loadCues();
+  if(s.index!==lastIdx){lastIdx=s.index;markRows(true)}
+}
+
+let ended=false,fullscreen=false;
+function applyVlc(v){
+  if(!v||v.error||!v.state){
+    errVlc=(v&&v.error)||'no response';
+    vlcState='';setPill('offline','VLC OFFLINE');
+    setText($('tCur'),'--:--');setText($('tLen'),'--:--');setBar(0);
+  }else{
+    errVlc='';vlcState=v.state;fullscreen=!!v.fullscreen;
+    setPill(v.state,v.state==='playing'?'PLAYING':v.state==='paused'?'PAUSED':'STOPPED');
+    setText($('tCur'),fmt(v.time));
+    const hasLen=v.length>0;
+    setText($('tLen'),hasLen?fmt(v.length):'--:--');
+    setBar(hasLen?Math.min(1,v.time/v.length):0);
+    // A hold clip that reached its end is "paused" in VLC but is not something to RESUME.
+    ended=v.state==='paused'&&hasLen&&v.time>=v.length-1;
+    if(ended)setPill('paused','HELD AT END');
+  }
+  if(!vlcState)ended=false;
+  const paused=vlcState==='paused'&&!ended;
+  setText($('pause'),paused?'RESUME':'PAUSE');
+  $('pause').classList.toggle('is-paused',paused);
+  setText($('fsBtn'),vlcState&&fullscreen?'EXIT FULLSCREEN':'FULLSCREEN');
+  $('tally').classList.toggle('live',vlcState==='playing');
+}
+let lastBar=0;
+function setBar(r){
+  const el=$('barFill');
+  if(r<lastBar){el.style.transition='none';el.style.transform='scaleX('+r+')';void el.offsetWidth;el.style.transition=''}
+  else el.style.transform='scaleX('+r+')';
+  lastBar=r;
+}
+
+/* ---------- banner / note ---------- */
+function refreshBanner(){
+  const msg=postErr||(online&&errState?'VLC: '+errState:'')||(online&&errVlc?'VLC: '+errVlc:'');
+  if(!msg){dismissed='';$('banner').hidden=true;return}
+  if(msg===dismissed){$('banner').hidden=true;return}
+  setText($('bannerTxt'),msg);$('banner').hidden=false;
+}
+$('bannerX').addEventListener('click',()=>{dismissed=($('bannerTxt').textContent);postErr='';$('banner').hidden=true;buzz()});
+let noteT=0;
+function note(t){const n=$('note');n.textContent=t;n.classList.add('show');clearTimeout(noteT);noteT=setTimeout(()=>n.classList.remove('show'),2500)}
+
+/* ---------- polling ---------- */
+let polling=false,pollT=0;
+async function poll(){
+  polling=true;const my=stamp;
+  const [s,v]=await Promise.allSettled([api('/api/state'),api('/api/vlc')]);
+  if(my===stamp){
+    if(s.status==='fulfilled'&&s.value&&s.value.state){
+      setOnline(true);errState=s.value.error||'';applyState(s.value.state);
+      applyVlc(v.status==='fulfilled'?v.value:{error:'no response'});
+    }else setOnline(false);
+    refreshBanner();
+  }
+  polling=false;
+  if(!document.hidden)pollT=setTimeout(poll,1000);
+}
+function kickPoll(){clearTimeout(pollT);if(!polling)poll()}
+
+/* ---------- commands ---------- */
+function flash(name){const b=$(name);if(!b)return;b.classList.add('hit');setTimeout(()=>b.classList.remove('hit'),160)}
+async function send(path){
+  stamp++;
+  try{
+    const r=await api(path,{method:'POST'},8000);
+    stamp++;
+    setOnline(true);
+    if(r.state)applyState(r.state);
+    const reason=r.reason||'';
+    if(r.error)postErr='VLC: '+r.error;
+    else if(reason.indexOf('vlc-error')===0)postErr='VLC: '+(reason.replace(/^vlc-error:?\s*/,'')||'command failed');
+    else{postErr='';if(reason==='no-op')note('Nothing to do')}
+  }catch(e){stamp++;setOnline(false);postErr='No connection: command may not have been sent'}
+  refreshBanner();
+  kickPoll();
+}
+function act(name){
+  buzz();flash(name);send('/api/'+name);
+}
+for(const n of ['next','prev','replay','pause'])$(n).addEventListener('click',()=>act(n));
+$('fsBtn').addEventListener('click',()=>{buzz();send('/api/fullscreen')});
+
+/* keyboard */
+const KEYS={' ':'next',ArrowRight:'next',PageDown:'next',ArrowLeft:'prev',PageUp:'prev',r:'replay',R:'replay',p:'pause',P:'pause'};
+addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey||modalOpen)return;
+  if(/^(SELECT|INPUT|TEXTAREA)$/.test(e.target.tagName))return;
+  const a=KEYS[e.key];if(!a)return;
+  e.preventDefault();
+  if(!e.repeat)act(a);
+});
+addEventListener('keyup',e=>{if(e.key===' '&&!modalOpen&&!/^(SELECT|INPUT|TEXTAREA)$/.test(e.target.tagName))e.preventDefault()});
+
+/* ---------- cues ---------- */
+let rows=[],refs=[],tickEls=[],armed=0,armT=0,cuesBusy=false,modalOpen=false,upl=null;
+async function loadCues(){
+  if(cuesBusy)return;cuesBusy=true;
+  try{
+    const r=await api('/api/cues');
+    if(r&&Array.isArray(r.cues)){
+      // same cue count: refresh rows in place (keeps scroll position and an upload in progress)
+      if(r.cues.length===rows.length&&rows.length){cues=r.cues;cues.forEach((c,i)=>renderRow(i))}
+      else{cues=r.cues;buildCues()}
+      cuesBusy=false;return;
+    }
+  }catch(e){}
+  cuesBusy=false;setTimeout(()=>{if(!cues.length)loadCues()},3000);
+}
+const fmtSize=b=>b==null?'':b>=1073741824?(b/1073741824).toFixed(2)+' GB':b>=1048576?(b/1048576).toFixed(1)+' MB':Math.max(1,Math.round(b/1024))+' KB';
+function renderRow(i){
+  const c=cues[i],r=refs[i];if(!c||!r)return;
+  const m=c.mode==='loop'?'LOOP':'HOLD';
+  r.btn.setAttribute('aria-label','Cue '+c.n+', '+c.label+', '+c.mode+'. Tap twice to jump.');
+  r.bd.className='badge '+c.mode;setText(r.bd,m);
+  r.mb.className='mini'+(c.mode==='loop'?' loop':'');setText(r.mb,'Mode: '+m);
+  r.mb.setAttribute('aria-label','Cue '+c.n+' mode is '+m+'. Tap to switch to '+(c.mode==='loop'?'HOLD':'LOOP')+'.');
+  r.meta.textContent='';
+  if(c.missing){const b=document.createElement('span');b.className='badge missing';b.textContent='MISSING';r.meta.append(b)}
+  r.meta.append(c.file+(c.missing?'':' - '+fmtSize(c.size)+' - '+new Date(c.mtime).toLocaleString([],{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})));
+  r.rb.setAttribute('aria-label','Replace video for cue '+c.n+', '+c.label);
+  const u=upl&&upl.id===c.id;
+  r.up.hidden=!u;if(u){setText(r.upTxt,upl.txt);r.upBar.style.transform='scaleX('+upl.pct+')'}
+  r.rb.disabled=r.mb.disabled=!!upl;
+}
+function buildCues(){
+  const list=$('list'),ticks=$('ticks');
+  list.textContent='';ticks.textContent='';rows=[];refs=[];tickEls=[];
+  cues.forEach((c,i)=>{
+    const li=document.createElement('li'),b=document.createElement('button');
+    b.type='button';b.className='cue';b.dataset.n=c.n;
+    b.setAttribute('aria-pressed','false');
+    const n=document.createElement('span');n.className='n';n.textContent=c.n;
+    const l=document.createElement('span');l.className='lab';l.textContent=c.label;
+    const bd=document.createElement('span');
+    const ar=document.createElement('span');ar.className='arm';ar.textContent='Tap again to jump';
+    const f=document.createElement('i');f.className='fuse';
+    b.append(n,l,bd,ar,f);
+    const tools=document.createElement('div');tools.className='tools';
+    const meta=document.createElement('span');meta.className='meta';
+    const acts=document.createElement('span');acts.className='acts';
+    const rb=document.createElement('button');rb.type='button';rb.className='mini';rb.dataset.act='replace';rb.dataset.i=i;rb.textContent='Replace video';
+    const mb=document.createElement('button');mb.type='button';mb.dataset.act='mode';mb.dataset.i=i;
+    acts.append(rb,mb);
+    const up=document.createElement('div');up.className='upl';up.hidden=true;
+    const bar=document.createElement('div');bar.className='bar';const upBar=document.createElement('i');bar.append(upBar);
+    const upTxt=document.createElement('span');up.append(bar,upTxt);
+    tools.append(meta,acts,up);
+    li.append(b,tools);list.append(li);rows.push(b);refs.push({btn:b,bd,mb,rb,meta,up,upBar,upTxt});
+    const t=document.createElement('i');ticks.append(t);tickEls.push(t);
+    renderRow(i);
+  });
+  if(!cues.length)list.innerHTML='<li class="empty">No cues found</li>';
+  markRows(true);
+}
+
+/* ---------- toast / modal ---------- */
+let toastT=0;
+function toast(t,err){const el=$('toast');el.textContent=t;el.classList.toggle('err',!!err);el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),err?9000:5000)}
+function confirmBox(msg,yes){
+  return new Promise(done=>{
+    const m=$('modal'),y=$('modalYes'),n=$('modalNo'),opener=document.activeElement;
+    setText($('modalTxt'),msg);setText(y,yes);m.hidden=false;modalOpen=true;n.focus();
+    const end=v=>{m.hidden=true;modalOpen=false;y.onclick=n.onclick=null;document.removeEventListener('keydown',key,true);if(opener&&opener.focus)opener.focus();done(v)};
+    const key=e=>{
+      if(e.key==='Escape'){e.preventDefault();end(false)}
+      else if(e.key==='Tab'){e.preventDefault();(document.activeElement===n?y:n).focus()}
+    };
+    document.addEventListener('keydown',key,true);
+    y.onclick=()=>end(true);n.onclick=()=>end(false);
+  });
+}
+
+/* ---------- replace video / mode ---------- */
+const pick=$('pick'),EXTS=/\.(mp4|mov|mkv|webm|m4v)$/i,MAXB=6*1024**3;
+let target=null;
+$('list').addEventListener('click',async e=>{
+  const mb=e.target.closest('.mini');if(!mb||mb.disabled)return;
+  const c=cues[+mb.dataset.i];if(!c)return;buzz();
+  if(mb.dataset.act==='replace'){target=c;pick.value='';pick.click();return}
+  const mode=c.mode==='loop'?'hold':'loop';
+  try{
+    const r=await api('/api/cue/'+encodeURIComponent(c.id),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode})});
+    if(!r.ok)throw new Error(r.error||'failed');
+    toast('Cue '+c.n+' is now '+mode.toUpperCase()+(st&&st.current&&st.current.id===c.id?' (fully applies when the cue is next played)':''));
+  }catch(err){toast('Could not change mode: '+err.message,true)}
+  loadCues();
+});
+pick.addEventListener('change',async()=>{
+  const f=pick.files[0],c=target;target=null;if(!f||!c)return;
+  if(!EXTS.test(f.name)){toast('Unsupported file type. Use mp4, mov, mkv, webm or m4v.',true);return}
+  if(f.size>MAXB){toast('File is larger than 6 GB.',true);return}
+  const playing=!!(st&&st.current&&st.current.id===c.id);
+  if(playing&&!await confirmBox('Cue '+c.n+' ('+c.label+') is playing on the projector right now. Replace its video anyway?','Replace anyway'))return;
+  upload(c,f,playing);
+});
+function upload(c,f,confirmed){
+  upl={id:c.id,pct:0,txt:'Uploading 0%'};cues.forEach((_,i)=>renderRow(i));
+  const x=new XMLHttpRequest();
+  x.open('POST','/api/clip/'+encodeURIComponent(c.id)+(confirmed?'?confirm=1':''));
+  x.setRequestHeader('x-filename',encodeURIComponent(f.name));
+  x.setRequestHeader('content-type','application/octet-stream');
+  const fin=(msg,err)=>{upl=null;toast(msg,err);loadCues().then(()=>cues.forEach((_,i)=>renderRow(i)))};
+  x.upload.onprogress=ev=>{
+    if(!ev.lengthComputable)return;
+    upl.pct=ev.loaded/ev.total;upl.txt='Uploading '+Math.round(upl.pct*100)+'% ('+fmtSize(ev.loaded)+' of '+fmtSize(ev.total)+')';
+    renderRow(cues.findIndex(k=>k.id===c.id));
+  };
+  x.onload=()=>{
+    let r={};try{r=JSON.parse(x.responseText)}catch(e){}
+    if(x.status===200&&r.ok)fin('Replaced "'+c.label+'" with '+f.name+' ('+fmtSize(r.cue.size)+')',false);
+    else fin('Upload failed: '+(r.error||'HTTP '+x.status),true);
+  };
+  x.onerror=()=>fin('Upload failed: connection lost',true);
+  x.onabort=()=>fin('Upload cancelled',true);
+  x.send(f);
+}
+function markRows(scroll){
+  const idx=st?st.index:-1;
+  rows.forEach((b,i)=>{
+    b.classList.toggle('cur',i===idx);b.classList.toggle('past',i<idx);
+    if(i===idx)b.setAttribute('aria-current','true');else b.removeAttribute('aria-current');
+    tickEls[i].className=i===idx?'cur':i<idx?'past':'';
+  });
+  if(scroll&&idx>=0&&rows[idx]){
+    const list=$('list'),r=rows[idx];
+    list.scrollTo({top:Math.max(0,r.parentNode.offsetTop-(list.clientHeight-r.offsetHeight)/2),behavior:reduce.matches?'auto':'smooth'});
+  }
+}
+function disarm(){
+  clearTimeout(armT);
+  if(armed&&rows[armed-1]){const b=rows[armed-1];b.classList.remove('armed');b.setAttribute('aria-pressed','false')}
+  armed=0;
+}
+$('list').addEventListener('click',e=>{
+  const b=e.target.closest('.cue');if(!b)return;
+  const n=+b.dataset.n;buzz();
+  if(armed===n){disarm();send('/api/jump/'+n);return}
+  disarm();armed=n;b.classList.add('armed');b.setAttribute('aria-pressed','true');
+  armT=setTimeout(disarm,3000);
+});
+
+/* ---------- preview ---------- */
+let pvOn=ls.get('ndp.preview')!=='off',pvGen=0,pvBusy=false,pvT=0,pvCtl=null,pvUrl='',lastShot=0,pvFail='';
+const shotEl=$('shot'),phEl=$('ph'),screenSel=$('screen');
+function pvStop(){pvGen++;clearTimeout(pvT);pvBusy=false;if(pvCtl)pvCtl.abort()}
+function pvStart(){pvStop();if(pvOn&&!document.hidden)pvTick()}
+async function pvTick(){
+  if(!pvOn||document.hidden||pvBusy)return;
+  pvBusy=true;const gen=pvGen;let ok=false;
+  const ctl=pvCtl=new AbortController(),to=setTimeout(()=>ctl.abort(),8000);
+  try{
+    const q=screenSel.value!==''?'screen='+encodeURIComponent(screenSel.value)+'&':'';
+    const r=await fetch('/api/screenshot.jpg?'+q+'t='+Date.now(),{cache:'no-store',signal:ctl.signal});
+    if(!r.ok){let m='HTTP '+r.status;try{m=(await r.json()).error||m}catch(e){}throw new Error(m)}
+    const blob=await r.blob();
+    if(gen!==pvGen)return;
+    const u=URL.createObjectURL(blob),old=pvUrl;
+    shotEl.src=u;pvUrl=u;if(old)URL.revokeObjectURL(old);
+    lastShot=Date.now();pvFail='';ok=true;
+    shotEl.hidden=false;shotEl.classList.remove('stale');phEl.hidden=true;
+  }catch(e){
+    if(gen===pvGen){
+      pvFail=e.name==='AbortError'?'timed out':e.message;
+      if(lastShot)shotEl.classList.add('stale');
+      else{phEl.hidden=false;shotEl.hidden=true;setText(phEl,'Preview unavailable: '+pvFail+'. Retrying.')}
+    }
+  }finally{
+    clearTimeout(to);
+    if(gen===pvGen){pvBusy=false;pvT=setTimeout(pvTick,ok?2000:4000)}
+  }
+  tickAgo();
+}
+function tickAgo(){
+  const a=$('ago');
+  if(!pvOn){setText(a,'');return}
+  if(!lastShot){setText(a,'');return}
+  const s=Math.round((Date.now()-lastShot)/1000);
+  setText(a,(pvFail?'Preview failed ('+pvFail+'), last good frame ':'Updated ')+s+'s ago');
+}
+setInterval(tickAgo,1000);
+function pvUi(){
+  $('pvToggle').setAttribute('aria-pressed',String(pvOn));
+  setText($('pvToggle'),pvOn?'Preview ON':'Preview OFF');
+  $('frame').hidden=!pvOn;
+  tickAgo();
+}
+$('pvToggle').addEventListener('click',()=>{
+  buzz();pvOn=!pvOn;ls.set('ndp.preview',pvOn?'on':'off');pvUi();pvStart();
+});
+screenSel.addEventListener('change',()=>{
+  ls.set('ndp.screen',screenSel.value);
+  lastShot=0;pvFail='';shotEl.hidden=true;phEl.hidden=false;setText(phEl,'Loading display');
+  pvStart();
+});
+async function loadDisplays(){
+  try{
+    const d=await api('/api/displays');
+    if(!Array.isArray(d)||!d.length)throw 0;
+    const proj=d.find(x=>!x.primary)||d.find(x=>x.primary)||d[0];
+    screenSel.textContent='';
+    for(const x of d){
+      const o=document.createElement('option');o.value=x.index;
+      o.textContent='Display '+x.index+' ('+x.width+'x'+x.height+')'+(x===proj?' - projector':x.primary?' - primary':'');
+      screenSel.append(o);
+    }
+    const saved=ls.get('ndp.screen');
+    screenSel.value=d.some(x=>String(x.index)===saved)?saved:String(proj.index);
+    screenSel.hidden=false;
+  }catch(e){setTimeout(loadDisplays,10000)}
+}
+
+/* ---------- lifecycle ---------- */
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){clearTimeout(pollT);pvStop()}
+  else{kickPoll();pvStart()}
+});
+new ResizeObserver(()=>{
+  const h=$('dock').getBoundingClientRect().height;
+  document.documentElement.style.setProperty('--dock',Math.ceil(h)+'px');
+}).observe($('dock'));
+
+pvUi();
+loadCues();
+setInterval(()=>{if(!document.hidden)loadCues()},15000); // file sizes / MISSING badges
+poll();
+loadDisplays().then(pvStart);
+})();
+</script>
+</body></html>

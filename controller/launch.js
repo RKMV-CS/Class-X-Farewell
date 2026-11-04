@@ -1,0 +1,156 @@
+'use strict';
+// Replaces start.bat: checks the machine, picks free ports, writes start.generated.bat and runs it in its own console.
+const fs = require('fs');
+const net = require('net');
+const os = require('os');
+const path = require('path');
+const { spawn } = require('child_process');
+const displays = require('./displays');
+
+const DIR = __dirname;
+const BAT = path.join(DIR, 'start.generated.bat');
+const VLC_CANDIDATES = [
+  'C:\\Program Files\\VideoLAN\\VLC\\vlc.exe',
+  'C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe',
+];
+const FLAG_KEYS = { '--screen': 'screen', '--vlc-port': 'vlcPort', '--port': 'port' };
+
+// Free only if both loopback and wildcard binds succeed: a 0.0.0.0 listener also blocks 127.0.0.1.
+function canBind(port, host) {
+  return new Promise((resolve) => {
+    const srv = net.createServer();
+    srv.once('error', () => resolve(false));
+    srv.listen(port, host, () => srv.close(() => resolve(true)));
+  });
+}
+
+async function findFreePort(start) {
+  for (let port = start; port < Math.min(start + 200, 65536); port++) {
+    if (await canBind(port, '127.0.0.1') && await canBind(port, '0.0.0.0')) return port;
+  }
+  throw new Error(`no free port found from ${start}`);
+}
+
+function parseArgs(argv) {
+  const opt = { screen: null, windowed: false, dryRun: false, vlcPort: 8080, port: 3000 };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === '--windowed') opt.windowed = true;
+    else if (a === '--dry-run') opt.dryRun = true;
+    else if (FLAG_KEYS[a]) {
+      const n = Number(argv[++i]);
+      if (!Number.isInteger(n) || n < 0) throw new Error(`${a} needs a number`);
+      opt[FLAG_KEYS[a]] = n;
+    } else throw new Error(`unknown option ${a}`);
+  }
+  return opt;
+}
+
+// PowerShell single-quoted strings: a quote is doubled.
+const psq = (s) => s.replace(/'/g, "''");
+
+function lanIps() {
+  return Object.values(os.networkInterfaces()).flat()
+    .filter((n) => (n.family === 'IPv4' || n.family === 4) && !n.internal)
+    .map((n) => n.address);
+}
+
+async function main() {
+  const opt = parseArgs(process.argv.slice(2));
+  if (opt.port === opt.vlcPort) throw new Error('--port and --vlc-port must differ');
+  let bad = false;
+  const ok = (m) => console.log(`OK    ${m}`);
+  const warn = (m) => console.log(`WARN  ${m}`);
+  const fail = (m) => { console.log(`FAIL  ${m}`); bad = true; };
+
+  if (Number(process.versions.node.split('.')[0]) >= 18) ok(`Node ${process.version}`);
+  else fail(`Node ${process.version} is too old, need >= 18`);
+
+  const vlcTry = process.env.VLC_BIN ? [process.env.VLC_BIN] : VLC_CANDIDATES;
+  const vlcExe = vlcTry.find((p) => fs.existsSync(p));
+  if (vlcExe) ok(`VLC ${vlcExe}`);
+  else fail(`VLC not found (set VLC_BIN). Looked at: ${vlcTry.join(', ')}`);
+
+  if (fs.existsSync(path.join(DIR, 'node_modules', 'express'))) ok('node_modules/express');
+  else fail('node_modules/express missing: run npm install');
+
+  const cues = JSON.parse(fs.readFileSync(path.join(DIR, 'cues.json'), 'utf8'));
+  const missing = cues.map((c) => c.file).filter((f) => !fs.existsSync(path.join(DIR, 'clips', f)));
+  if (missing.length) warn(`${missing.length} clip(s) missing under clips/: ${missing.join(', ')}`);
+  else ok(`all ${cues.length} clips present`);
+  if (bad) process.exit(1);
+
+  const pick = async (name, start) => {
+    const got = await findFreePort(start);
+    if (got === start) ok(`${name} port ${got}`);
+    else warn(`${start} busy -> using ${got} for ${name}`);
+    return got;
+  };
+  const vlcPort = await pick('VLC http', opt.vlcPort);
+  const port = await pick('controller', opt.port);
+
+  let list;
+  try {
+    list = await displays.list();
+  } catch (e) {
+    warn(`display list failed (${e.message}), assuming one display`);
+    list = [{ index: 0, name: 'unknown', primary: true }];
+  }
+  console.log('Displays:');
+  for (const d of list) console.log(`  [${d.index}] ${d.name} ${d.width ?? '?'}x${d.height ?? '?'}${d.primary ? ' (primary)' : ''}`);
+
+  const fullscreen = !opt.windowed && list.length > 1;
+  let screen = null;
+  if (fullscreen) {
+    const projector = list.find((d) => !d.primary) || list[1];
+    screen = opt.screen ?? projector.index;
+    console.log(`Target display for VLC: ${screen}${opt.screen === null ? ' (first non-primary)' : ' (from --screen)'}`);
+    console.log('NOTE  VLC screen numbering base is unverified (start.bat says 1 = primary). If the picture lands on the wrong screen, rerun with --screen N.');
+  } else {
+    warn('only one display: VLC will open in a window, not fullscreen');
+  }
+
+  const vlcArgs = [
+    '--extraintf http', '--http-host 127.0.0.1', `--http-port ${vlcPort}`, '--http-password %VLC_PASSWORD%',
+    ...(fullscreen ? ['--fullscreen'] : []),
+    // --no-qt-video-autoresize: stops the window resizing itself to each clip (seen as 1920x1080 -> 1936x1056 -> back)
+    '--no-video-title-show', '--no-osd', '--play-and-pause', '--no-playlist-autostart', '--no-qt-video-autoresize',
+    ...(fullscreen ? [`--qt-fullscreen-screennumber=${screen}`] : []),
+  ].join(' ');
+
+  // Only this VLC's pid is killed, never `taskkill /im vlc.exe`, so the user's own VLC windows survive.
+  const bat = [
+    `REM generated by launch.js at ${new Date().toISOString()} - do not edit`,
+    '@echo off',
+    'chcp 65001 >nul', // UTF-8 so the QR code's block characters render
+    'cd /d "%~dp0"',
+    'if "%VLC_PASSWORD%"=="" set VLC_PASSWORD=farewell',
+    `set VLC_PORT=${vlcPort}`,
+    `set PORT=${port}`,
+    'del vlc.pid >nul 2>&1',
+    `powershell -NoProfile -Command "(Start-Process -FilePath '${psq(vlcExe)}' -ArgumentList '${vlcArgs}' -PassThru).Id" > vlc.pid`,
+    'timeout /t 3 >nul',
+    'node server.js',
+    'set VLC_PID=',
+    'set /p VLC_PID=<vlc.pid',
+    'if defined VLC_PID taskkill /pid %VLC_PID% /f >nul 2>&1',
+    'del vlc.pid >nul 2>&1',
+  ].join('\r\n') + '\r\n';
+  fs.writeFileSync(BAT, bat);
+  console.log(`Wrote ${BAT}`);
+
+  if (opt.dryRun) {
+    console.log(bat);
+    console.log('DRY RUN: nothing launched.');
+    return;
+  }
+  // A separate cmd window gives node a real TTY for keyboard control.
+  spawn('cmd.exe', ['/c', 'start', 'NDPify controller', 'cmd', '/k', BAT], { detached: true, stdio: 'ignore' }).unref();
+  console.log(`Dashboard: http://localhost:${port}`);
+  for (const ip of lanIps()) console.log(`LAN:       http://${ip}:${port}`);
+}
+
+if (require.main === module) {
+  main().catch((e) => { console.error(`FAIL  ${e.message}`); process.exit(1); });
+}
+module.exports = { findFreePort };
