@@ -25,7 +25,10 @@ const segs = [
   ['000_idle_blur',   { steps: [{ state: 'blur', hold: 2.5 }], tail: 0 }],
   ['001_store_open',  { steps: [{ state: 'reveal', hold: 3.5 }], tail: 0 }],
   ['002_install',     { steps: [{ cue: 1 }], tail: 0.6 }],
-  ['003_open',        { steps: [{ cue: 2 }], tail: 0.6 }],
+  // 003_open is the heaviest scene (785 frames, ~25% of all work): three slices of one capture, so it can run on three machines. Earlier frames are still stepped (not saved), so the slices join seamlessly; ids share the cue number 003 for soundtrack.js.
+  ['003a_open',       { steps: [{ cue: 2 }], tail: 0.6, range: [0, 262] }],
+  ['003b_open',       { steps: [{ cue: 2 }], tail: 0.6, range: [262, 524] }],
+  ['003c_open',       { steps: [{ cue: 2 }], tail: 0.6, range: [524, Infinity] }],
   ['004_home',        { steps: [{ cue: 3 }], tail: 1.5 }],
   ['005_library',     { steps: [{ cue: 4 }], tail: 0.8 }],
   ['006_nowplaying',  { steps: [{ cue: 5, idle: 8 }], tail: 0 }],
