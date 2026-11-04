@@ -1,6 +1,6 @@
 name: Release render
 
-# Merge main into release -> full 1080p60 show is rendered on 2 machines, joined, and published as a GitHub release.
+# Merge main into release -> full 1080p60 show is rendered on 5 machines, joined, and published as a GitHub release.
 on:
   push:
     branches: [release]
@@ -15,7 +15,7 @@ permissions:
   contents: write
 
 env:
-  SHARDS: 2           # machines; keep in sync with the matrix below
+  SHARDS: 5           # machines; keep in sync with the matrix below. 5 is the plateau: slowest segment (003_open) ~ total/4.
   FULL_CRF: 15
   FULL_POOL: 1        # parallel browsers per machine (runners have 7-16 GB)
 
@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3, 4, 5]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
