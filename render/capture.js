@@ -42,6 +42,8 @@ async function capture(id, def, outRoot) {
 
     const FRAME_MS = 1000 / FPS;
     let frame = 0, vt = 0; // vt: virtual ms elapsed
+    // def.range = [from, to): only frames from..to-1 of the timeline are saved. Earlier frames are still stepped (state stays identical) but not screenshotted, so a long segment can be split across machines.
+    let tl = 0; const [R0, R1] = def.range || [0, Infinity], STOP = new Error('range end');
     const SUB = FRAME_MS / 4; // sub-steps keep animation start times within ~4 ms of the real virtual moment
     const sub = async ms => {
       const done = new Promise(res => cdp.once('Emulation.virtualTimeBudgetExpired', res));
@@ -51,8 +53,10 @@ async function capture(id, def, outRoot) {
     };
     const step = async ms => { for (let left = ms; left > 1e-6; left -= SUB) await sub(Math.min(SUB, left)); };
     const grab = async () => {
+      if (tl < R0) { tl++; return; }
       const { data } = await cdp.send('Page.captureScreenshot', { format: 'png' });
       fs.writeFileSync(path.join(outDir, String(++frame).padStart(5, '0') + '.png'), Buffer.from(data, 'base64'));
+      if (++tl >= R1) throw STOP;
     };
     // advance one frame of virtual time, then screenshot
     const tick = async () => { await step(FRAME_MS); await page.evaluate(() => { window.__flushRaf(); window.__sync(0); }); await grab(); };
@@ -74,6 +78,7 @@ async function capture(id, def, outRoot) {
       window.__ndpify.cues.forEach(c => { const o = c.run; c.run = async function () { try { return await o.call(this); } finally { window.__done++; } }; });
     });
 
+    try {
     for (const s of def.steps) {
       if (s.state) { await page.evaluate(n => window.__ndpify.idle(n), s.state); for (let n = 0; n < Math.round(s.hold * FPS); n++) await tick(); continue; }   // idle state: blur | reveal, then hold
       const before = await page.evaluate(() => window.__done);
@@ -85,6 +90,7 @@ async function capture(id, def, outRoot) {
       while ((await page.evaluate(() => window.__done)) === before);
     }
     for (let n = 0; n < Math.round(def.tail * FPS); n++) await tick();
+    } catch (e) { if (e !== STOP) throw e; }
     return { frames: frame, seconds: frame / FPS, dir: outDir };
   } finally { await browser.close(); }
 }
