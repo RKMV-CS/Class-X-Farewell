@@ -24,14 +24,15 @@
     root.innerHTML = '<div class="gw-bg"><i class="gw-blob gw-b1"></i><i class="gw-blob gw-b2"></i><i class="gw-blob gw-b3"></i><i class="gw-blob gw-b4"></i></div>';
     blobs = [...root.querySelectorAll('.gw-blob')]; bgK = -1;
     S = cfg.students.map(s => {
-      const pos = esc(s.pos || '50% 28%'), photos = (s.photos && s.photos.length ? s.photos : [s.then]).slice(0, 3);
+      // pos = default object-position; posT[i] = per childhood photo, posN = the "now" photo (each photo has its own framing)
+      const pos = esc(s.pos || '50% 28%'), posN = esc(s.posN || s.pos || '50% 28%'), photos = (s.photos && s.photos.length ? s.photos : [s.then]).slice(0, 3);
       const el = document.createElement('div'); el.className = 'gw-slot';
-      const lays = photos.map(p => `<div class="gw-lay"><img class="gw-soft" src="${esc(p)}" style="object-position:${pos}" alt=""><img class="gw-sharp" src="${esc(p)}" style="object-position:${pos}" alt=""></div>`).join('');
+      const lays = photos.map((p, i) => { const q = esc((s.posT && s.posT[i]) || s.pos || '50% 28%'); return `<div class="gw-lay"><img class="gw-soft" src="${esc(p)}" style="object-position:${q}" alt=""><img class="gw-sharp" src="${esc(p)}" style="object-position:${q}" alt=""></div>`; }).join('');
       const chars = [...s.name].map(c => `<span class="gw-c">${c === ' ' ? '&nbsp;' : esc(c)}</span>`).join('');
       const fs = s.name.length > 14 ? Math.max(36, Math.floor(60 * 14 / s.name.length)) : 60;
       el.innerHTML = `<div class="gw-glow"></div><div class="gw-card"><div class="gw-flip">
         <div class="gw-face gw-then"><div class="gw-frame"><div class="gw-ph"><div class="gw-kb">${lays}</div><div class="gw-tint"></div><div class="gw-sheen"></div></div></div></div>
-        <div class="gw-face gw-now"><div class="gw-frame"><div class="gw-ph"><div class="gw-kb"><img src="${esc(s.now)}" style="object-position:${pos}" alt="${esc(s.name)}"></div><div class="gw-tint"></div><div class="gw-sheen"></div></div></div></div>
+        <div class="gw-face gw-now"><div class="gw-frame"><div class="gw-ph"><div class="gw-kb"><img src="${esc(s.now)}" style="object-position:${posN}" alt="${esc(s.name)}"></div><div class="gw-tint"></div><div class="gw-sheen"></div></div></div></div>
       </div></div>
       <div class="gw-timer"><div class="gw-tdisc"><svg viewBox="0 0 120 120"><circle class="gw-tbase" cx="60" cy="60" r="50" pathLength="100"/><circle class="gw-tring" cx="60" cy="60" r="50" pathLength="100"/></svg><b class="gw-tn">10</b></div><span class="gw-tcap">think!</span></div>
       <div class="gw-plate"><div class="gw-pt">Guess who<i>?</i></div><div class="gw-pn"><b style="font-size:${fs}px">${chars}</b>${cfg.tag ? `<span class="gw-tag">${esc(cfg.tag)}</span>` : ''}</div></div>
