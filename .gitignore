@@ -11,3 +11,21 @@ graphify-out/
 review/state.json
 review/server.log
 *.part.mp4
+# tool caches and hand-made backups (git history is the backup)
+.impeccable/hook.cache.json
+**/.impeccable/hook.cache.json
+prototype/index.html.*
+*.bak
+*.old
+*.prev
+*.prev.*
+*.prev-*
+*.mp4.prev-*
+# scratch and secrets
+.env
+.env.*
+*.log
+Thumbs.db
+.DS_Store
+prototype/img/guesswho/_orig/
+prototype/img/guesswho/*.png

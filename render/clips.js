@@ -35,5 +35,8 @@ module.exports = {
     '30_gw7_guess': { steps: [{ cue: 26 }], tail: 0.5 },
     '31_gw7_reveal': { steps: [{ cue: 27 }], tail: 0.5 },
     '32_gw7_off': { steps: [{ cue: 28 }], tail: 0.5 },
+    '33_gw8_guess': { steps: [{ cue: 29 }], tail: 0.5 },
+    '34_gw8_reveal': { steps: [{ cue: 30 }], tail: 0.5 },
+    '35_gw8_off': { steps: [{ cue: 31 }], tail: 0.5 },
   },
 };

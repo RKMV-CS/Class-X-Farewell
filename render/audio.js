@@ -79,6 +79,7 @@ const putStereo = (mix, t, st, g = 1) => { const o = Math.round(t * SR); for (le
 
 // ---- per-clip sound design: wet = reverb amount, peak = final peak dBFS, build(mix) places events (seconds from go(cue)) ----
 const EVENTS = {
+  // Timeline re-verified against the current prototype on 2026-11-04 (events unchanged, they already match the 20.74 s cue).
   // Install cue (starts on the held App Store frame, no idle lead-in). Timeline from the cue code, seconds from go(1):
   // cursor lands 1.44, click 1.74 (curClick resolves 2.04) -> Face ID sheet in 2.04 (.5) -> white scan 2.54-4.34 -> deny/shake 4.34-5.34 (+.3 reset)
   // -> green portrait draw 5.64-8.39 -> saffron pop 8.39 (spark chime) -> verified + check 8.64-9.64 -> sheet out 9.64-10.14 -> ring 10.14, progress 10.64-17.14, Installed 18.04, black 19.34
@@ -98,38 +99,42 @@ const EVENTS = {
     put(m, 10.14, tick(2600, 0.35), 0.5, 0.2);                                                                        // ring starts
     put(m, 18.04, bell(659.25, 1.6, 0.45), 0.5, -0.1); put(m, 18.24, bell(880, 2.0, 0.55), 0.5, 0.1);                 // "Installed"
   } },
-  // hello 0.3 (written by ~2.3), sheens 1.2 and 2.65, out 3.35, dock hover 6.99, click 7.49, genie 8.04-9.04, splash 9.04
+  // Open cue, timeline re-verified against the current prototype on 2026-11-04 (cue code + frame check of 003_open.mp4):
+  // hello strokes 0.6-3.86, sheens 4.3-5.1 (s2 starts 4.71), hello out 5.66, cursor on dock icon 9.30, click 9.80, genie 10.35-11.35, splash 11.35
   '02_ndpify_open': { wet: 0.25, peak: -3, build(m) {
-    put(m, 0.3, noise({ dur: 3.3, f0: 2500, f1: 6000, q: 0.9, shape: bump(0.55, 2) }), 0.5, 0);                   // airy shimmer swell
-    put(m, 0.35, scale(tone({ f0: 520, f1: 1560, dur: 1.95, att: 0.2, decay: 4, partials: [[1, 0.6], [2, 0.25]] }), u => 0.07 * Math.min(1, (1 - u) * 5)), 1, 0); // pen pitch rises while writing
+    put(m, 0.3, noise({ dur: 5.6, f0: 2500, f1: 6000, q: 0.9, shape: bump(0.55, 2) }), 0.5, 0);                   // airy shimmer swell
+    put(m, 0.6, scale(tone({ f0: 520, f1: 1560, dur: 3.25, att: 0.2, decay: 4, partials: [[1, 0.6], [2, 0.25]] }), u => 0.07 * Math.min(1, (1 - u) * 5)), 1, 0); // pen pitch rises while writing
     const pent = [0, 2, 4, 7, 9];                                                                                   // glassy tinkle, rising pentatonic
-    for (let k = 0; k < 14; k++) put(m, 0.4 + k * 0.14, bell(523.25 * Math.pow(2, (pent[k % 5] + 12 * Math.floor(k / 5)) / 12), 0.7, 0.18), 0.12 + k * 0.004, Math.sin(k * 1.7) * 0.5);
-    put(m, 2.35, bell(1318.5, 1.6, 0.5), 0.2, -0.3); put(m, 2.42, bell(1975.5, 1.6, 0.5), 0.14, 0.3);               // sparkle when writing completes
-    put(m, 3.05, bell(1568, 1.4, 0.45), 0.14, 0.2);                                                                  // second sheen
-    put(m, 3.35, noise({ dur: 1.0, f0: 5000, f1: 900, q: 0.8, shape: bump(0.35, 1.5) }), 0.6, 0);                   // dissolve whoosh
-    put(m, 6.99, tick(1800, 0.3), 0.5, 0.3);                                                                         // dock hover tick
-    put(m, 7.49, click(), 0.55, 0.2); put(m, 7.565, click(), 0.18, 0.2);                                             // click
-    put(m, 8.04, noise({ dur: 1.1, f0: 250, f1: 5200, q: 2.2, shape: bump(0.7, 1.2) }), 1.0, 0);                    // genie noise sweep
-    put(m, 8.04, scale(tone({ f0: 110, f1: 720, dur: 1.0, att: 0.1, decay: 2, partials: [[1, 0.7], [2, 0.2]] }), bump(0.75, 1)), 0.28, 0); // genie pitch glide
-    [261.63, 329.63, 392, 523.25].forEach((f, k) => put(m, 9.04 + k * 0.09, tone({ f0: f, dur: 2.2, att: 0.01, decay: 0.8, partials: [[1, 1], [2, 0.18], [3, 0.05]] }), 0.28, (k - 1.5) * 0.25)); // welcome chime
-    put(m, 9.04, tone({ f0: 130.81, dur: 2.2, att: 0.05, decay: 0.9 }), 0.22, 0);
+    for (let k = 0; k < 14; k++) put(m, 0.65 + k * 0.23, bell(523.25 * Math.pow(2, (pent[k % 5] + 12 * Math.floor(k / 5)) / 12), 0.7, 0.18), 0.12 + k * 0.004, Math.sin(k * 1.7) * 0.5);
+    put(m, 3.9, bell(1318.5, 1.6, 0.5), 0.2, -0.3); put(m, 3.97, bell(1975.5, 1.6, 0.5), 0.14, 0.3);               // sparkle when writing completes
+    put(m, 5.0, bell(1568, 1.4, 0.45), 0.14, 0.2);                                                                  // second sheen
+    put(m, 5.66, noise({ dur: 1.0, f0: 5000, f1: 900, q: 0.8, shape: bump(0.35, 1.5) }), 0.6, 0);                   // dissolve whoosh
+    put(m, 9.3, tick(1800, 0.3), 0.5, 0.3);                                                                         // dock hover tick
+    put(m, 9.8, click(), 0.55, 0.2); put(m, 9.875, click(), 0.18, 0.2);                                             // click
+    put(m, 10.35, noise({ dur: 1.1, f0: 250, f1: 5200, q: 2.2, shape: bump(0.7, 1.2) }), 1.0, 0);                    // genie noise sweep
+    put(m, 10.35, scale(tone({ f0: 110, f1: 720, dur: 1.0, att: 0.1, decay: 2, partials: [[1, 0.7], [2, 0.2]] }), bump(0.75, 1)), 0.28, 0); // genie pitch glide
+    [261.63, 329.63, 392, 523.25].forEach((f, k) => put(m, 11.35 + k * 0.09, tone({ f0: f, dur: 2.2, att: 0.01, decay: 0.8, partials: [[1, 1], [2, 0.18], [3, 0.05]] }), 0.28, (k - 1.5) * 0.25)); // welcome chime
+    put(m, 11.35, tone({ f0: 130.81, dur: 2.2, att: 0.05, decay: 0.9 }), 0.22, 0);
   } },
-  // Library: cursor to nav 1.84 (hover), click 2.19, playlist slides in 2.69, cursor to new playlist 5.13 (hover), click 5.53 opens it
+  // Library, timeline re-verified against the current prototype on 2026-11-04 (curClick now resolves 0.3 s after the click, so the reactions land 0.3 s later):
+  // cursor to nav 1.84 (hover), click 2.19, playlist slides in 2.99, cursor to new playlist 5.43 (hover), click 5.83, playlist opens 6.13
   '04_library_playlist': { wet: 0.15, peak: -4, build(m) {
     put(m, 1.84, tick(1800, 0.3), 0.5, -0.3);
     put(m, 2.19, click(), 0.55, -0.2); put(m, 2.265, click(), 0.18, -0.2);
-    put(m, 2.69, noise({ dur: 0.9, f0: 600, f1: 3500, q: 1.2, shape: bump(0.4, 1.4) }), 0.5, -0.2);                 // playlist slides in
-    put(m, 2.9, bell(987.77, 1.0, 0.3), 0.07, 0.2);
-    put(m, 5.13, tick(1800, 0.3), 0.5, 0.2);
-    put(m, 5.53, click(), 0.55, 0.1); put(m, 5.605, click(), 0.18, 0.1);
-    put(m, 5.55, noise({ dur: 0.8, f0: 500, f1: 3000, q: 1.2, shape: bump(0.4, 1.4) }), 0.4, 0.1);                  // playlist opens
+    put(m, 2.99, noise({ dur: 0.9, f0: 600, f1: 3500, q: 1.2, shape: bump(0.4, 1.4) }), 0.5, -0.2);                 // playlist slides in
+    put(m, 3.2, bell(987.77, 1.0, 0.3), 0.07, 0.2);
+    put(m, 5.43, tick(1800, 0.3), 0.5, 0.2);
+    put(m, 5.83, click(), 0.55, 0.1); put(m, 5.905, click(), 0.18, 0.1);
+    put(m, 6.13, noise({ dur: 0.8, f0: 500, f1: 3000, q: 1.2, shape: bump(0.4, 1.4) }), 0.4, 0.1);                  // playlist opens
   } },
-  // Ad break: app dissolves to ad screen 0.9, cursor reaches Get Pro 4.14, hover, click + sting 4.59
+  // Ad break, timeline re-verified against the current prototype on 2026-11-04 (frames of 007_adbreak.mp4):
+  // app dissolves to the ad screen 0.2-1.0 (layers() flips at 0, not 0.9), cursor reaches Get Pro 4.14, hover, click + sting 4.59
   '06_adbreak_intro': { wet: 0.2, peak: -3, build(m) {
-    put(m, 0.9, noise({ dur: 1.2, f0: 800, f1: 3000, q: 1.0, shape: bump(0.4, 1.6) }), 0.3, 0);
+    put(m, 0.15, noise({ dur: 1.2, f0: 800, f1: 3000, q: 1.0, shape: bump(0.4, 1.6) }), 0.3, 0);
     put(m, 4.14, tick(1800, 0.3), 0.5, 0.2);
     put(m, 4.59, click(), 0.3, 0.1); putStereo(m, 4.59, sting(), 1);
   } },
+  // Timeline re-verified against the current prototype on 2026-11-04 (home dissolve visible 0.45-2.4, unchanged).
   // splash dissolves into Home at 0.5 (2.2 s): very quiet airy pad and a whisper of air
   '03_home_trending': { wet: 0.3, peak: -22, build(m) {
     put(m, 0.3, noise({ dur: 2.0, f0: 1500, f1: 3500, q: 0.8, shape: bump(0.4, 2) }), 0.7, 0);
