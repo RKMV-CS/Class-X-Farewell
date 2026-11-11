@@ -27,3 +27,5 @@ prototype/index.html.*
 *.log
 Thumbs.db
 .DS_Store
+prototype/img/guesswho/_orig/
+prototype/img/guesswho/*.png

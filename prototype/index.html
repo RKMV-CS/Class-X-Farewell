@@ -658,14 +658,16 @@ const artists = [
 ];
 // Guess Who (ad break): each student = 3 cues (mystery + 10 s timer, held; reveal, held; dismiss). then = childhood photo, now = today, pos = object-position (CSS) to keep the face in frame.
 const guessWho = { tag: "Class 10", students: [
-  { name: "Piyush Kumar", then: "guesswho-preview/img/then1.jpg", photos: ["guesswho-preview/img/then1.jpg", "guesswho-preview/img/extra1.jpg"], now: "guesswho-preview/img/p1.jpg", pos: "50% 28%" },
-  { name: "Rishabh Das", then: "guesswho-preview/img/then2.jpg", photos: ["guesswho-preview/img/then2.jpg", "guesswho-preview/img/extra3.jpg"], now: "img/artists/rishabh_das.jpg", pos: "50% 28%" },
-  { name: "Satyaki Chakrabarti", then: "guesswho-preview/img/then3.jpg", photos: ["guesswho-preview/img/then3.jpg", "guesswho-preview/img/extra4.jpg"], now: "img/artists/satyaki_chakrabarti.jpg", pos: "50% 28%" },
-  { name: "Aishik Aich", then: "guesswho-preview/img/then4.jpg", photos: ["guesswho-preview/img/then4.jpg", "guesswho-preview/img/extra2.jpg"], now: "img/artists/aishik_aich.jpg", pos: "50% 28%" },
-  { name: "Angan Mandal", then: "guesswho-preview/img/then1.jpg", photos: ["guesswho-preview/img/then1.jpg", "guesswho-preview/img/extra4.jpg"], now: "img/artists/angan_mandal.jpg", pos: "50% 28%" },
-  { name: "Abhijnan Adhikary", then: "guesswho-preview/img/then2.jpg", photos: ["guesswho-preview/img/then2.jpg", "guesswho-preview/img/extra1.jpg"], now: "img/artists/abhijnan_adhikary.jpg", pos: "50% 28%" },
-  { name: "Soumyadeep Biswas", then: "guesswho-preview/img/then3.jpg", photos: ["guesswho-preview/img/then3.jpg", "guesswho-preview/img/extra2.jpg"], now: "img/artists/soumyadeep_biswas.jpg", pos: "50% 28%" }
+  { name: "Arya", then: "img/guesswho/arya_then1.jpg", photos: ["img/guesswho/arya_then1.jpg"], posT: ["50% 0%"], now: "img/guesswho/arya_now.jpg", posN: "50% 0%" },
+  { name: "Sadhu", then: "img/guesswho/sadhu_then1.jpg", photos: ["img/guesswho/sadhu_then1.jpg", "img/guesswho/sadhu_then2.jpg", "img/guesswho/sadhu_then3.jpg"], posT: ["37% 50%", "0% 50%", "22% 50%"], now: "img/guesswho/sadhu_now.jpg", posN: "50% 0%" },
+  { name: "Mayukh", then: "img/guesswho/bali_then1.jpg", photos: ["img/guesswho/bali_then1.jpg", "img/guesswho/bali_then2.jpg"], posT: ["50% 100%", "50% 60%"], now: "img/guesswho/bali_now.jpg", posN: "50% 0%" },
+  { name: "Padmashree", then: "img/guesswho/padmashree_then1.jpg", photos: ["img/guesswho/padmashree_then1.jpg"], posT: ["36% 50%"], now: "img/guesswho/padmashree_now.jpg", posN: "50% 0%" },
+  { name: "Ashutosh", then: "img/guesswho/langra_then1.jpg", photos: ["img/guesswho/langra_then1.jpg"], posT: ["77% 50%"], now: "img/guesswho/langra_now.jpg", posN: "50% 0%" },
+  { name: "Arijit", then: "img/guesswho/arijit_then1.jpg", photos: ["img/guesswho/arijit_then1.jpg"], posT: ["36% 50%"], now: "img/guesswho/arijit_now.jpg", posN: "50% 0%" },
+  { name: "Ujjwal", then: "img/guesswho/ujjwal_then1.jpg", photos: ["img/guesswho/ujjwal_then1.jpg"], posT: ["50% 87%"], now: "img/guesswho/ujjwal_now.jpg", posN: "23% 50%" },
+  { name: "Anish", then: "img/guesswho/anish_then1.jpg", photos: ["img/guesswho/anish_then1.jpg"], posT: ["50% 0%"], now: "img/guesswho/anish_now.jpg", posN: "50% 0%" }
 ] };
+
 songs.forEach((s, i) => { s.cover = s.cover || photoFor(i * 7); });
 artists.forEach((a, i) => { a.cover = a.cover || photoFor(i * 7 + 3); });
 CONFIG.playlist.cover = LOGOS[0] || photoFor(0);
