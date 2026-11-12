@@ -1,6 +1,16 @@
 name: Release render
 
-# Merge main into release -> full 1080p60 show is rendered on 11 machines, joined, and published as a GitHub release.
+# Merge main into release -> full 1080p60 show is rendered on 15 machines, joined, and published as a GitHub release; the controller clips
+# (renamed Guess Who segments + 17 min song/standby/ad loops) are collected into ONE artifact `controller-clips`.
+#
+# jobs:  plan -> render (15 machines) -> publish          (release only)
+#        plan -> loops  (5 machines)                      (loop clips, render-long.js)
+#        render + loops -> clips                          (release only: artifact controller-clips)
+#        render + loops -> preview                        (test runs only: one contact-sheet JPG)
+# Test run (workflow_dispatch, only=...): `only` is a comma-separated list of segment ids (render) and/or loop keys (loops: np1 ad standby song02..song11).
+#   only=song03             -> plan skips render, loops starts ONE machine that renders song03, preview shows it. Nothing else runs.
+#   only=000_idle_blur      -> render only (every shard starts, only the owner of that segment renders), no loops, preview shows it.
+#   only empty (release)    -> everything, then publish + clips; no preview.
 on:
   push:
     branches: [release]
@@ -15,18 +25,47 @@ permissions:
   contents: write
 
 env:
-  SHARDS: 11          # machines; keep in sync with the matrix below. 11 is the plateau: slowest segment (003c_open, ~16 min) ~ makespan; 10 machines is 6% slower, more gains nothing.
+  # Render machines; keep in sync with the matrix below. Estimated work (render/shard-weights.json, 13 kids) = 14018 s; at ~16 min (960 s) per machine that is 14.6 -> 15.
+  # 15 is the plateau: greedy makespan 970 s = the slowest segment (003c_open); 14 machines = 1033 s, 16 gains nothing. 15 render + 5 loops machines = 20 concurrent (the limit).
+  SHARDS: 15
   FULL_CRF: 15
   FULL_POOL: 1        # parallel browsers per machine (runners have 7-16 GB)
 
 jobs:
+  # Cheap decision job: which heavy jobs/machines are needed for this run (a job-level `if` cannot see the matrix, so the loop matrix is built here).
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      render: ${{ steps.p.outputs.render }}
+      loops: ${{ steps.p.outputs.loops }}
+      matrix: ${{ steps.p.outputs.matrix }}
+    steps:
+      - id: p
+        shell: bash
+        env:
+          ONLY: ${{ inputs.only }}
+        run: |
+          node - <<'EOF'
+          // Loop keys per machine (render-long.js; est. cost np1 ~5.5k, ad ~3k, each stage loop ~1.9k units): 5.5k / 6.8k / 5.7k / 5.7k / 5.7k.
+          const groups = [["np1"], ["ad", "standby", "song02"], ["song03", "song04", "song05"], ["song06", "song07", "song08"], ["song09", "song10", "song11"]];
+          const only = (process.env.ONLY || "").split(",").map(s => s.trim()).filter(Boolean), all = groups.flat();
+          const include = groups.map((g, i) => ({ n: i + 1, keys: g.filter(k => !only.length || only.includes(k)).join(" ") })).filter(m => m.keys);
+          const render = !only.length || only.some(o => !all.includes(o));   // segment ids (anything that is not a loop key) need the render matrix
+          const matrix = { include: include.length ? include : [{ n: 0, keys: "" }] };   // never an empty matrix; the loops job is skipped anyway
+          require("fs").appendFileSync(process.env.GITHUB_OUTPUT, `render=${render}\nloops=${include.length > 0}\nmatrix=${JSON.stringify(matrix)}\n`);
+          console.log({ only, render, include });
+          EOF
+
   render:
+    needs: plan
+    if: needs.plan.outputs.render == 'true'
     runs-on: windows-latest   # same fonts + ffmpeg build as the reviewed look
     timeout-minutes: 350
     strategy:
       fail-fast: true
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -51,6 +90,110 @@ jobs:
           path: render/out/full/*.mp4
           if-no-files-found: ignore
           retention-days: 2
+
+  # 17 min ambient clips: np1, ad, standby, song02..song11 (render/loops.js). One machine renders a few keys; result = artifact loops-<n>.
+  loops:
+    needs: plan
+    if: needs.plan.outputs.loops == 'true'
+    name: loops ${{ matrix.n }} (${{ matrix.keys }})
+    runs-on: windows-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: true
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Render deps
+        working-directory: render
+        run: |
+          npm ci
+          npx playwright-core install chromium
+      - name: Render loops ${{ matrix.keys }}
+        working-directory: render
+        shell: bash
+        run: node render-long.js ${{ matrix.keys }} --no-publish   # keys come from the allow-list in the plan job
+      - uses: actions/upload-artifact@v4
+        with:
+          name: loops-${{ matrix.n }}
+          path: |
+            render/out/long/*.mp4
+            !render/out/long/L_*.mp4
+          if-no-files-found: error
+          compression-level: 0      # mp4 is already compressed
+          retention-days: 3
+
+  # Release only: the controller's clip set in ONE artifact (Guess Who segments under their cue names + the loop clips).
+  clips:
+    needs: [render, loops]
+    if: inputs.only == ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: segments-*
+          path: clips-in/segments
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: loops-*
+          path: clips-in/loops
+          merge-multiple: true
+      - name: Collect controller clips
+        run: |
+          node render/collect-clips.test.js
+          node render/collect-clips.js clips-in/segments clips-in/loops controller-clips controller/cues.json
+          ls -l controller-clips
+      - uses: actions/upload-artifact@v4
+        with:
+          name: controller-clips
+          path: controller-clips/*.mp4
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 3
+
+  # Test runs only (only != ''): 3 frames of every mp4 produced by this run on ONE contact sheet (+ frames either side of the loop join for songs/standby).
+  preview:
+    needs: [plan, render, loops]
+    if: ${{ always() && inputs.only != '' && needs.plan.result == 'success' }}
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Render deps (ffmpeg + sharp only)
+        working-directory: render
+        run: npm ci
+      # a test run produces only one of the two kinds: a pattern without a match must not fail the job
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: segments-*
+          path: preview-in/segments
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: loops-*
+          path: preview-in/loops
+          merge-multiple: true
+      - name: Contact sheet
+        shell: bash
+        run: |
+          mkdir -p preview-out
+          node render/preview.js preview-in preview-out/preview.jpg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: preview
+          path: preview-out/*
+          if-no-files-found: warn
+          retention-days: 3
 
   publish:
     needs: render
