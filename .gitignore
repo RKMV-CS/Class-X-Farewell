@@ -29,3 +29,4 @@ Thumbs.db
 .DS_Store
 prototype/img/guesswho/_orig/
 prototype/img/guesswho/*.png
+.claude/worktrees/

@@ -8,7 +8,7 @@ const { Vlc } = require('../vlc');
 const { buildApp } = require('../server');
 const mock = require('./mock-vlc');
 const cues = require('../cues.json');
-const SONG2 = cues.findIndex((c) => c.id === '09_nowplaying_song2') + 1;   // 1-based cue number (moves when cues are inserted before it)
+const SONG2 = cues.findIndex((c) => c.id === 'song02') + 1;   // 1-based cue number (moves when cues are inserted before it)
 
 test('CueState transitions', () => {
   const s = new CueState(cues);
@@ -99,7 +99,7 @@ test('HTTP: remote page and API', async () => {
   assert.equal(j.state.current.id, '01_store_download');
   assert.equal(j.state.next.id, '02_ndpify_open');
   j = await (await fetch(base + '/api/jump/' + SONG2, { method: 'POST' })).json();
-  assert.equal(j.state.current.id, '09_nowplaying_song2');
+  assert.equal(j.state.current.id, 'song02');
   j = await (await fetch(base + '/api/prev', { method: 'POST' })).json();
   assert.equal(j.state.index, SONG2 - 2);
   j = await (await fetch(base + '/api/fullscreen', { method: 'POST' })).json();
