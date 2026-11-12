@@ -84,7 +84,8 @@ h1,h2{margin:0}
 .phead,.chead{display:flex;align-items:center;justify-content:space-between;gap:.6rem;flex-wrap:wrap}
 h2{font:700 1.15rem/1.2 var(--disp);letter-spacing:.03em}
 .pctl{display:flex;gap:.5rem;align-items:center;min-width:0;flex:1 1 100%}
-.pctl select{flex:1}
+.pctl{flex-wrap:wrap}
+.pctl select{flex:1 1 100%}
 select{background:var(--panel2);border:1.5px solid var(--line);border-radius:.6rem;min-height:2.75rem;padding:0 .6rem;max-width:100%;min-width:0}
 .tog{white-space:nowrap;background:var(--panel2);border:1.5px solid var(--line);border-radius:.6rem;min-height:2.75rem;padding:0 .8rem;font-weight:600}
 .tog[aria-pressed=true]{border-color:var(--go);color:var(--go)}
@@ -204,7 +205,8 @@ kbd{font:600 .8rem var(--disp);padding:.15rem .4rem;border:1px solid var(--line)
       <div class="phead">
         <h2>Projector preview</h2>
         <div class="pctl">
-          <select id="screen" aria-label="Display to preview" hidden></select>
+          <select id="screen" aria-label="Screen the show plays on" hidden></select>
+          <button type="button" class="tog" id="rescan">Recheck screens</button>
           <button type="button" class="tog" id="pvToggle" aria-pressed="true">Preview ON</button>
         </div>
       </div>
@@ -528,7 +530,7 @@ async function pvTick(){
   pvBusy=true;const gen=pvGen;let ok=false;
   const ctl=pvCtl=new AbortController(),to=setTimeout(()=>ctl.abort(),8000);
   try{
-    const q=screenSel.value!==''?'screen='+encodeURIComponent(screenSel.value)+'&':'';
+    const q=/^\d+$/.test(screenSel.value)?'screen='+encodeURIComponent(screenSel.value)+'&':'';
     const r=await fetch('/api/screenshot.jpg?'+q+'t='+Date.now(),{cache:'no-store',signal:ctl.signal});
     if(!r.ok){let m='HTTP '+r.status;try{m=(await r.json()).error||m}catch(e){}throw new Error(m)}
     const blob=await r.blob();
@@ -566,27 +568,46 @@ function pvUi(){
 $('pvToggle').addEventListener('click',()=>{
   buzz();pvOn=!pvOn;ls.set('ndp.preview',pvOn?'on':'off');pvUi();pvStart();
 });
-screenSel.addEventListener('change',()=>{
-  ls.set('ndp.screen',screenSel.value);
-  lastShot=0;pvFail='';shotEl.hidden=true;phEl.hidden=false;setText(phEl,'Loading display');
-  pvStart();
-});
-async function loadDisplays(){
+/* Show screen: where VLC plays (server restarts VLC to move it). The preview follows the same display. */
+let showScreen=null,canSwitch=false;
+function pvReset(){lastShot=0;pvFail='';shotEl.hidden=true;phEl.hidden=false;setText(phEl,'Loading display');pvStart()}
+screenSel.addEventListener('change',async()=>{
+  const v=screenSel.value,prev=showScreen===null?'window':String(showScreen);
+  if(!canSwitch){toast('Start with launch.js so the screen can be moved. Preview follows your pick.',true);pvReset();return}
+  const label=screenSel.selectedOptions[0].textContent;
+  if(st&&st.current&&!await confirmBox('The show is running. VLC restarts on "'+label+'" and the current cue plays again from the start.','Move show')){screenSel.value=prev;return}
+  buzz();screenSel.disabled=true;toast('Moving the show to "'+label+'" ...');
   try{
-    const d=await api('/api/displays');
+    const r=await api('/api/screen',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({screen:v==='window'?'window':+v})},20000);
+    if(!r.ok)throw new Error(r.error||'failed');
+    showScreen=r.screen;toast('Show is now on "'+label+'"');
+  }catch(e){toast('Could not move the show: '+e.message,true);screenSel.value=prev}
+  screenSel.disabled=false;kickPoll();pvReset();
+});
+async function loadDisplays(fresh){
+  try{
+    const [d,sc]=await Promise.all([api('/api/displays'+(fresh?'?fresh=1':''),null,12000),api('/api/screen')]);
     if(!Array.isArray(d)||!d.length)throw 0;
-    const proj=d.find(x=>!x.primary)||d.find(x=>x.primary)||d[0];
+    showScreen=sc.screen;canSwitch=!!sc.canSwitch;
     screenSel.textContent='';
+    const w=document.createElement('option');w.value='window';w.textContent='Windowed (not fullscreen)';screenSel.append(w);
     for(const x of d){
       const o=document.createElement('option');o.value=x.index;
-      o.textContent='Display '+x.index+' ('+x.width+'x'+x.height+')'+(x===proj?' - projector':x.primary?' - primary':'');
+      o.textContent='Display '+x.index+' ('+x.width+'x'+x.height+')'+(x.primary?' - primary (PC screen)':' - external / projector');
       screenSel.append(o);
     }
-    const saved=ls.get('ndp.screen');
-    screenSel.value=d.some(x=>String(x.index)===saved)?saved:String(proj.index);
+    const proj=d.find(x=>!x.primary)||d[0];
+    screenSel.value=showScreen!==null&&d.some(x=>x.index===showScreen)?String(showScreen):(sc.screen===null&&!canSwitch?String(proj.index):'window');
     screenSel.hidden=false;
-  }catch(e){setTimeout(loadDisplays,10000)}
+    if(fresh)toast(d.length+(d.length===1?' screen':' screens')+' found');
+    return true;
+  }catch(e){if(fresh)toast('Could not read the screens: '+(e.message||'no answer'),true);else setTimeout(loadDisplays,10000);return false}
 }
+$('rescan').addEventListener('click',async()=>{
+  buzz();const b=$('rescan');b.disabled=true;setText(b,'Checking ...');
+  const ok=await loadDisplays(true);
+  b.disabled=false;setText(b,'Recheck screens');if(ok)pvReset();
+});
 
 /* ---------- lifecycle ---------- */
 document.addEventListener('visibilitychange',()=>{
@@ -602,7 +623,7 @@ pvUi();
 loadCues();
 setInterval(()=>{if(!document.hidden)loadCues()},15000); // file sizes / MISSING badges
 poll();
-loadDisplays().then(pvStart);
+loadDisplays(false).then(pvStart);
 })();
 </script>
 </body></html>

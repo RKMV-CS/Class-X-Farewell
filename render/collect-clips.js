@@ -13,6 +13,19 @@ function controllerName(segId) {
   const k = +m[1], [word, off] = KIND[m[2]];
   return `${12 + 3 * (k - 1) + off}_gw${k}_${word}`;
 }
+
+// Scene segments (render-full.js ids 000_..., 002_...) -> controller clips. segs = 3-digit id prefixes joined in order (003a/b/c are slices of one cue);
+// sfx = the clip has the audio.js sound design under its own id (else silent).
+const SCENES = {
+  '00_idle_blur':        { segs: ['000'] },
+  '00_store_reveal':     { segs: ['001'] },
+  '01_store_download':   { segs: ['002'], sfx: true },
+  '02_ndpify_open':      { segs: ['003'], sfx: true },
+  '03_home_trending':    { segs: ['004'], sfx: true },
+  '04_library_playlist': { segs: ['005'], sfx: true },
+  '06_adbreak_intro':    { segs: ['007'], sfx: true },
+};
+const sceneParts = (files, sc) => files.filter((f) => sc.segs.includes(f.slice(0, 3))).sort();
 const studentCount = cues => cues.filter(c => /_gw\d+_guess$/.test(c.id)).length;
 
 // ids: segment ids found on disk. Returns { renames: [[segId, controllerName]], missing: [segId pattern], skipped: [segId] }
@@ -27,7 +40,32 @@ function plan(ids, n) {
   return { renames, missing, skipped };
 }
 
-module.exports = { controllerName, studentCount, plan };
+module.exports = { controllerName, studentCount, plan, SCENES, sceneParts };
+
+// Joins each scene's segments (stream copy), adds its sound (or silence) and writes <outDir>/<clipId>.mp4. 60 fps like every other segment.
+function buildScenes(segDir, outDir, ffmpeg, tmp) {
+  const { spawnSync } = require('child_process');
+  const { seconds } = require('./soundtrack'), { build } = require('./audio');
+  const files = fs.readdirSync(segDir).filter((f) => f.endsWith('.mp4'));
+  fs.mkdirSync(tmp, { recursive: true });
+  for (const [id, sc] of Object.entries(SCENES)) {
+    const parts = sceneParts(files, sc);
+    if (!parts.length) throw new Error(`no segment with prefix ${sc.segs} for ${id}`);
+    const list = path.join(tmp, id + '.txt');
+    fs.writeFileSync(list, parts.map((f) => `file '${path.resolve(segDir, f).replace(/\\/g, '/')}'`).join('\n') + '\n');
+    const joined = path.join(tmp, id + '.joined.mp4');
+    run(ffmpeg, ['-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', joined]);
+    const dur = seconds(ffmpeg, joined);
+    const audio = sc.sfx ? ['-i', build(id, dur, tmp)] : ['-f', 'lavfi', '-i', 'anullsrc=r=48000:cl=stereo'];
+    run(ffmpeg, ['-y', '-v', 'error', '-i', joined, ...audio, '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', path.join(outDir, id + '.mp4')]);
+    console.log(`scene ${id}: ${parts.join(' + ')} (${dur.toFixed(1)} s${sc.sfx ? ', sound' : ', silent'})`);
+  }
+}
+function run(cmd, a) {
+  const r = require('child_process').spawnSync(cmd, a, { encoding: 'utf8', maxBuffer: 1 << 26 });
+  if (r.status !== 0) throw new Error(`${path.basename(cmd)} failed:
+${(r.stderr || '').slice(-1500)}`);
+}
 
 if (require.main === module) {
   const [segDir, loopDir, outDir, cuesF = path.join(__dirname, '..', 'controller', 'cues.json')] = process.argv.slice(2);
@@ -39,6 +77,8 @@ if (require.main === module) {
   if (missing.length) { console.error(`missing Guess Who segments for ${n} kids: ${missing.join(', ')}`); process.exit(1); }
   fs.mkdirSync(outDir, { recursive: true });
   for (const [id, name] of renames) { fs.copyFileSync(path.join(segDir, id + '.mp4'), path.join(outDir, name + '.mp4')); if (!cueIds.has(name)) console.warn(`warning: ${name} is not a cue id in cues.json`); }
+  buildScenes(segDir, outDir, process.env.FFMPEG || 'ffmpeg', path.join(outDir, '.tmp'));
+  fs.rmSync(path.join(outDir, '.tmp'), { recursive: true, force: true });
   const loops = mp4s(loopDir);
   for (const f of loops) fs.copyFileSync(path.join(loopDir, f), path.join(outDir, f));
   console.log(`${n} kids: ${renames.length} Guess Who clips renamed, ${loops.length} loop clips copied -> ${outDir}`);

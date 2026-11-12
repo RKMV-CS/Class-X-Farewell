@@ -1160,6 +1160,8 @@ const storeIdle = () => { blackSet(false); layers(['store'], 'pre'); storeSet([]
 const veil = $('#idleVeil');
 const idles = {
   blur: { name: 'Idle: blurred (waiting)', prep() { storeIdle(); L.store.classList.add('zoom'); veil.classList.add('on'); }, async run() {} },
+  // from the black after the Netflix intro: black fades (1.2 s, #black transition) into the blurred waiting frame, then rests on it
+  blurIn: { name: 'Idle: blurred, fading in from black', prep() { idles.blur.prep(); blackSet(true); }, async run() { await wait(150); blackSet(false); await wait(1250); } },
   reveal: { name: 'Idle: App Store open (held)', prep() { idles.blur.prep(); },
     async run() { await wait(300); veil.classList.remove('on'); L.store.classList.remove('zoom'); await wait(1450); } }
 };
@@ -1259,9 +1261,9 @@ function go(i, dir) {
   hud();
   cue.run().catch(e => { if (e !== CANCEL) console.error(e); });
 }
-function idle(name) {   // 'blur' (static) | 'reveal' (blur -> sharp, then rests on the held frame)
+function idle(name) {   // 'blur' (static) | 'blurIn' (black -> blur) | 'reveal' (blur -> sharp, then rests on the held frame)
   const c = idles[name]; if (!c) throw new Error('idle: unknown ' + name);
-  idx = name === 'blur' ? -2 : -1; ++runId;
+  idx = name === 'reveal' ? -1 : -2; ++runId;
   audio(); snap(() => c.prep()); hud();
   c.run().catch(e => { if (e !== CANCEL) console.error(e); });
 }

@@ -22,7 +22,7 @@ const students = require('../controller/cues.json').filter(c => /_gw\d+_guess$/.
 const NEXT = 8 + 3 * students;   // cue index of "Next song" (after the Guess Who block)
 
 const segs = [
-  ['000_idle_blur',   { steps: [{ state: 'blur', hold: 2.5 }], tail: 0 }],
+  ['000_idle_blur',   { steps: [{ state: 'blurIn', hold: 3 }], tail: 0 }],   // black (Netflix intro ends on black) -> blurred waiting frame
   ['001_store_open',  { steps: [{ state: 'reveal', hold: 3.5 }], tail: 0 }],
   ['002_install',     { steps: [{ cue: 1 }], tail: 0.6 }],
   // 003_open is the heaviest scene (785 frames, ~25% of all work): three slices of one capture, so it can run on three machines. Earlier frames are still stepped (not saved), so the slices join seamlessly; ids share the cue number 003 for soundtrack.js.

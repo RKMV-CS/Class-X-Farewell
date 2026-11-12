@@ -37,4 +37,4 @@ function soundtrack(ffmpeg, segFiles, outWav, { music, musicGain = 0.22 } = {}) 
   if (r.status !== 0) throw new Error('soundtrack mix failed:\n' + (r.stderr || '').slice(-1200));
   return outWav;
 }
-module.exports = { soundtrack };
+module.exports = { soundtrack, seconds };

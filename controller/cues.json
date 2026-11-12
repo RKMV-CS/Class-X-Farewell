@@ -12,6 +12,18 @@
     "label": "2-3 · Netflix intro + MB27 logo, ends on \"MB27 Presents / The Final Chapter\""
   },
   {
+    "id": "00_idle_blur",
+    "file": "00_idle_blur.mp4",
+    "mode": "hold",
+    "label": "4 · NDPify: fades in from black to the blurred waiting screen (held)"
+  },
+  {
+    "id": "00_store_reveal",
+    "file": "00_store_reveal.mp4",
+    "mode": "hold",
+    "label": "4 · NDPify: blur clears to the App Store (held)"
+  },
+  {
     "id": "01_store_download",
     "file": "01_store_download.mp4",
     "mode": "hold",

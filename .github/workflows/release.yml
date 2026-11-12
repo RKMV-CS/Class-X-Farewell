@@ -144,6 +144,8 @@ jobs:
           pattern: loops-*
           path: clips-in/loops
           merge-multiple: true
+      - name: Render deps (ffmpeg)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - name: Collect controller clips
         run: |
           node render/collect-clips.test.js

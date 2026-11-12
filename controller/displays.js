@@ -40,8 +40,8 @@ function ps(script, env) {
 }
 
 let cache = { at: 0, value: null };
-async function list() {
-  if (cache.value && Date.now() - cache.at < 5000) return cache.value;
+async function list(fresh = false) {
+  if (!fresh && cache.value && Date.now() - cache.at < 5000) return cache.value;
   const value = JSON.parse(await ps(LIST, {}));
   cache = { at: Date.now(), value };
   return value;

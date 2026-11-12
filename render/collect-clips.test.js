@@ -15,4 +15,10 @@ a.equal(p.renames.length, 6);
 a.deepEqual(p.skipped, ['000_idle_blur', '015_gw3_mystery']);   // kid 3 is not in cues.json: ignored
 p = plan(ids, 3);
 a.deepEqual(p.missing, ['19_gw3_reveal', '20_gw3_off']);
+const { SCENES, sceneParts } = require('./collect-clips');
+const segs = ['000_idle_blur.mp4', '001_store_open.mp4', '003c_open.mp4', '003a_open.mp4', '003b_open.mp4', '005_library.mp4', '006_nowplaying.mp4'];
+a.deepEqual(sceneParts(segs, SCENES['02_ndpify_open']), ['003a_open.mp4', '003b_open.mp4', '003c_open.mp4']);   // slices joined in order
+a.deepEqual(sceneParts(segs, SCENES['04_library_playlist']), ['005_library.mp4']);
+a.deepEqual(sceneParts(segs, SCENES['00_idle_blur']), ['000_idle_blur.mp4']);
+a.deepEqual(sceneParts(segs, { segs: ['006'] }), ['006_nowplaying.mp4']);
 console.log('collect-clips ok');
