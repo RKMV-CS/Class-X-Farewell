@@ -21,4 +21,8 @@ a.deepEqual(sceneParts(segs, SCENES['02_ndpify_open']), ['003a_open.mp4', '003b_
 a.deepEqual(sceneParts(segs, SCENES['04_library_playlist']), ['005_library.mp4']);
 a.deepEqual(sceneParts(segs, SCENES['00_idle_blur']), ['000_idle_blur.mp4']);
 a.deepEqual(sceneParts(segs, { segs: ['006'] }), ['006_nowplaying.mp4']);
+const { FADE_IN } = require('./collect-clips');
+a.ok(FADE_IN.has('06_adbreak_intro') && FADE_IN.has('12_gw1_guess'));
+a.ok(!FADE_IN.has('13_gw1_reveal') && !FADE_IN.has('01_store_download'));   // continuation clips start on the previous frame: no fade
+a.ok([...FADE_IN].every((n) => n in SCENES || /^\d+_gw1_guess$/.test(n)));
 console.log('collect-clips ok');

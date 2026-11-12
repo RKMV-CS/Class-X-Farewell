@@ -25,6 +25,15 @@ const SCENES = {
   '04_library_playlist': { segs: ['005'], sfx: true },
   '06_adbreak_intro':    { segs: ['007'], sfx: true },
 };
+// Clips that start a new scene (the cue before them ends on an unrelated frame): they fade up from black so the cut is a dip, not a jump.
+// Others start on the previous clip's last frame and must NOT fade. Song/standby loops get theirs in render-long.js.
+const FADE_IN = new Set(['06_adbreak_intro', '12_gw1_guess']);
+const FADE_S = 0.6;
+// x264 re-encode with a fade-from-black head (the only place a clip is re-encoded; needs a full ffmpeg: the CI apt build has `fade`).
+function fadeIn(ffmpeg, src, dst) {
+  run(ffmpeg, ['-y', '-v', 'error', '-i', src, '-vf', `fade=t=in:st=0:d=${FADE_S}`, '-c:v', 'libx264', '-crf', '15', '-preset', 'slow', '-pix_fmt', 'yuv420p',
+    '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709', '-c:a', 'copy', '-movflags', '+faststart', dst]);
+}
 const sceneParts = (files, sc) => files.filter((f) => sc.segs.includes(f.slice(0, 3))).sort();
 const studentCount = cues => cues.filter(c => /_gw\d+_guess$/.test(c.id)).length;
 
@@ -40,7 +49,7 @@ function plan(ids, n) {
   return { renames, missing, skipped };
 }
 
-module.exports = { controllerName, studentCount, plan, SCENES, sceneParts };
+module.exports = { controllerName, studentCount, plan, SCENES, sceneParts, FADE_IN };
 
 // Joins each scene's segments (stream copy), adds its sound (or silence) and writes <outDir>/<clipId>.mp4. 60 fps like every other segment.
 function buildScenes(segDir, outDir, ffmpeg, tmp) {
@@ -57,8 +66,10 @@ function buildScenes(segDir, outDir, ffmpeg, tmp) {
     run(ffmpeg, ['-y', '-v', 'error', '-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', joined]);
     const dur = seconds(ffmpeg, joined);
     const audio = sc.sfx ? ['-i', build(id, dur, tmp)] : ['-f', 'lavfi', '-i', 'anullsrc=r=48000:cl=stereo'];
-    run(ffmpeg, ['-y', '-v', 'error', '-i', joined, ...audio, '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', path.join(outDir, id + '.mp4')]);
-    console.log(`scene ${id}: ${parts.join(' + ')} (${dur.toFixed(1)} s${sc.sfx ? ', sound' : ', silent'})`);
+    const out = path.join(outDir, id + '.mp4'), faded = FADE_IN.has(id), mux = faded ? path.join(tmp, id + '.mux.mp4') : out;
+    run(ffmpeg, ['-y', '-v', 'error', '-i', joined, ...audio, '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', mux]);
+    if (faded) fadeIn(ffmpeg, mux, out);
+    console.log(`scene ${id}: ${parts.join(' + ')} (${dur.toFixed(1)} s${sc.sfx ? ', sound' : ', silent'}${faded ? ', fade-in' : ''})`);
   }
 }
 function run(cmd, a) {
@@ -76,7 +87,7 @@ if (require.main === module) {
   if (!n) { console.error(`no *_gwK_guess cue in ${cuesF}`); process.exit(1); }
   if (missing.length) { console.error(`missing Guess Who segments for ${n} kids: ${missing.join(', ')}`); process.exit(1); }
   fs.mkdirSync(outDir, { recursive: true });
-  for (const [id, name] of renames) { fs.copyFileSync(path.join(segDir, id + '.mp4'), path.join(outDir, name + '.mp4')); if (!cueIds.has(name)) console.warn(`warning: ${name} is not a cue id in cues.json`); }
+  for (const [id, name] of renames) { const src = path.join(segDir, id + '.mp4'), dst = path.join(outDir, name + '.mp4'); if (FADE_IN.has(name)) fadeIn(process.env.FFMPEG || 'ffmpeg', src, dst); else fs.copyFileSync(src, dst); if (!cueIds.has(name)) console.warn(`warning: ${name} is not a cue id in cues.json`); }
   buildScenes(segDir, outDir, process.env.FFMPEG || 'ffmpeg', path.join(outDir, '.tmp'));
   fs.rmSync(path.join(outDir, '.tmp'), { recursive: true, force: true });
   const loops = mp4s(loopDir);
