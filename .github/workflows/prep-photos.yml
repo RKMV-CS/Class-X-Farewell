@@ -1,0 +1,48 @@
+name: Prep Guess Who photos
+
+# Manual: downloads the Drive photos listed in prototype/img/guesswho/sources.json on <branch>,
+# converts them to <slug>_<slot>.jpg, commits the jpgs back to <branch>. Originals are never committed.
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Feature branch holding sources.json (jpgs are committed back onto it)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  prep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Install render deps (sharp)
+        working-directory: render
+        run: npm ci
+      - name: Self-test
+        run: node render/prep-photos.js --selftest
+      - name: Download and convert photos
+        run: node render/prep-photos.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: photo-contact-sheet
+          path: prototype/img/guesswho/_orig/photo-contact-sheet.jpg
+          retention-days: 3
+          if-no-files-found: error
+      - name: Commit jpgs
+        env:
+          BRANCH: ${{ inputs.branch }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add prototype/img/guesswho/*.jpg
+          if git diff --cached --quiet; then echo "no jpg changes"; exit 0; fi
+          git commit -m "Guess Who: add converted photos (prep-photos workflow)"
+          git pull --rebase origin "$BRANCH"
+          git push origin "HEAD:$BRANCH"
