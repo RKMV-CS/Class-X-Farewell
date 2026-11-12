@@ -1,4 +1,5 @@
-// node render/render-long.js [np1 np2 ad c10] [--force]   -> 17 min clips for controller/clips (see loops.js)
+// node render/render-long.js [np1 ad standby song02 .. song11] [--force] [--no-publish]   -> 17 min clips in render/out/long, copied to controller/clips (see loops.js)
+// --no-publish (CI): leave the clips in render/out/long, do not touch controller/clips.
 // Capture ONE seamless loop period (+ entry transition), encode intro/loop/tail separately with Remotion, join with `ffmpeg -c copy`.
 const fs = require('fs'), path = require('path'), http = require('http');
 const { spawnSync } = require('child_process');
@@ -11,7 +12,7 @@ const FPS = 30, ROOT = __dirname, PROJECT = path.resolve(ROOT, '..');
 const FRAMES = path.join(ROOT, 'frames'), OUT = path.join(ROOT, 'out', 'long'), BACKUP = path.join(ROOT, 'backup-placeholders');
 const CLIPS = path.join(PROJECT, 'controller', 'clips');
 const FFMPEG = path.join(ROOT, 'node_modules', '@remotion', 'compositor-win32-x64-msvc', 'ffmpeg.exe'); // = `npx remotion ffmpeg`
-const args = process.argv.slice(2), force = args.includes('--force');
+const args = process.argv.slice(2), force = args.includes('--force'), noPublish = args.includes('--no-publish');
 const keys = args.filter(a => !a.startsWith('--')), want = k => !keys.length || keys.includes(k);
 const pad = n => String(n).padStart(5, '0');
 fs.mkdirSync(OUT, { recursive: true });
@@ -36,13 +37,14 @@ const serve = () => new Promise(res => {
 const loadCapture = url => { process.env.NDPIFY_URL = url; delete require.cache[require.resolve('./capture')]; return require('./capture').capture; };
 
 // ---- helpers ----
-const raw = async (dir, i) => sharp(path.join(dir, pad(i + 1) + '.jpg')).removeAlpha().raw().toBuffer(); // i: 0-based frame
+const raw = async (dir, i) => sharp(path.join(dir, pad(i + 1) + '.png')).removeAlpha().raw().toBuffer(); // i: 0-based frame
 const diff = (a, b) => { let s = 0, mx = 0; for (let k = 0; k < a.length; k++) { const d = Math.abs(a[k] - b[k]); s += d; if (d > mx) mx = d; } return { mean: +(s / a.length).toFixed(4), max: mx }; };
 function ff(argv) {
   const r = spawnSync(FFMPEG, ['-y', '-hide_banner', '-loglevel', 'error', ...argv], { encoding: 'utf8', maxBuffer: 1 << 28 });
   if (r.status !== 0) throw new Error('ffmpeg failed: ' + (r.stderr || r.error));
 }
 function publish(src, file) {
+  if (noPublish) return src;
   const dest = path.join(CLIPS, file);
   if (fs.existsSync(dest)) { fs.mkdirSync(BACKUP, { recursive: true }); const b = path.join(BACKUP, file); if (!fs.existsSync(b)) fs.copyFileSync(dest, b); } // keep the ORIGINAL placeholder only
   const part = dest + '.part';
@@ -78,8 +80,9 @@ async function longClip(key, def, capture) {
   let m;
   if (!force && fs.existsSync(metaF)) m = JSON.parse(fs.readFileSync(metaF, 'utf8'));
   else {
-    console.log(`[${key}] capturing (cue ${def.cue}, loop ${def.period}s)...`);
-    const r = await capture(id, { steps: [{ cue: def.cue }], tail: tailF / FPS }, FRAMES);
+    console.log(`[${key}] capturing (${def.page ? 'page ' + def.page : 'cue ' + def.cue}, loop ${def.period}s)...`);
+    // page loops: hold the idle page for settle + one period + 1 frame; cue loops: play the cue, then idle for the same time
+    const r = await capture(id, def.page ? { steps: [{ state: 'stage', hold: tailF / FPS }], tail: 0 } : { steps: [{ cue: def.cue }], tail: tailF / FPS }, FRAMES);
     m = { N: r.frames, I: r.frames - tailF + settle, pf }; fs.writeFileSync(metaF, JSON.stringify(m));
   }
   const tCap = Date.now(), { N, I } = m;
@@ -105,23 +108,6 @@ async function longClip(key, def, capture) {
   return { key, ...m, n, tailN };
 }
 
-// ---- short clip 10 (ad break again, same timeline as clip 06) ----
-async function shortClip(key, def, capture) {
-  const t0 = Date.now(), id = '10_extra_video_1', dir = path.join(FRAMES, id);
-  let tail = def.tail; try { const d6 = require('./clips').clips['06_adbreak_intro']; if (d6 && d6.tail != null) tail = d6.tail; } catch {}
-  const r = await capture(id, { steps: [{ cue: def.cue }], tail }, FRAMES), secs = r.frames / FPS;
-  let audio = null; const wav = path.join(ROOT, 'audio', '06_adbreak_intro.wav');
-  if (fs.existsSync(wav)) {
-    const p = spawnSync(FFMPEG.replace('ffmpeg.exe', 'ffprobe.exe'), ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', wav], { encoding: 'utf8' });
-    const wd = parseFloat(p.stdout);
-    if (Math.abs(wd - secs) < 0.1) { fs.copyFileSync(wav, path.join(dir, 'audio.wav')); audio = 'audio.wav'; } else console.log(`[10] wav ${wd}s != video ${secs}s: silent`);
-  }
-  const out = path.join(OUT, def.file);
-  await render(dir, r.frames, audio, [{ out }]);
-  const d = publish(out, def.file);
-  console.log(`[${key}] -> ${d} ${r.frames}f (${secs.toFixed(2)} s) audio=${audio ? 'sting reused' : 'silent'} ${((Date.now() - t0) / 1000).toFixed(0)} s`);
-}
-
 (async () => {
   const T0 = Date.now(), srv = await serve(), base = `http://127.0.0.1:${srv.address().port}/prototype/`;
   // captures: independent Chromium instances, max 3 at once; Remotion renders contend for the same CPU, so render() runs one at a time
@@ -130,11 +116,10 @@ async function shortClip(key, def, capture) {
     if (active >= 3) await new Promise(r => waiting.push(r)); else active++;
     try { return await cap(...a); } finally { const w = waiting.shift(); if (w) w(); else active--; }
   };
-  const capLoops = limited(loadCapture(base + 'loops.html')), capPlain = limited(loadCapture(base + 'index.html'));
-  const runs = [
-    ...Object.entries(L.loops).filter(([k]) => want(k)).map(([k, d]) => longClip(k, d, capLoops)),
-    ...Object.entries(L.short).filter(([k]) => want(k)).map(([k, d]) => shortClip(k, d, capPlain)),
-  ];
+  const unknown = keys.filter(k => !L.loops[k]);
+  if (unknown.length) { console.error(`unknown loop key(s): ${unknown.join(', ')} (have: ${Object.keys(L.loops).join(' ')})`); srv.close(); process.exit(2); }
+  const capCue = limited(loadCapture(base + 'loops.html'));   // capture.js reads NDPIFY_URL once, so each URL gets its own module copy
+  const runs = Object.entries(L.loops).filter(([k]) => want(k)).map(([k, d]) => longClip(k, d, d.page ? limited(loadCapture(base + d.page)) : capCue));
   const done = await Promise.allSettled(runs);
   done.forEach(r => { if (r.status === 'rejected') console.error('FAILED', r.reason); });
   srv.close();

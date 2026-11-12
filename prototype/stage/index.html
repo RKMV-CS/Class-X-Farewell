@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NDPify stage</title>
+<!-- Generic ambient screen for songs and live-act standby. ?kind=song&n=5 | ?kind=standby | optional ?t=7.5 freezes time. See stage.js -->
+<link rel="stylesheet" href="stage.css">
+</head>
+<body>
+<div id="stage">
+  <div class="bg"></div>
+  <div class="blobs" id="blobs"></div>
+  <div class="ghost" id="ghost"></div>
+  <div class="eq" id="eq"></div>
+  <div class="mark" id="mark">
+    <i class="ring"></i><i class="ring"></i>
+    <div class="tile"><svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(-3 4)"><path d="M21 77V27L58 77V28" stroke-width="12.5"/><circle cx="58" cy="25" r="14" fill="currentColor" stroke="none"/><path d="M74 47a14 14 0 0 1 0 19M84 38a27 27 0 0 1 0 37" stroke-width="6.5" opacity=".9"/></g></svg></div>
+  </div>
+  <div class="label" id="label"><i class="dot" id="dot"></i><span id="lt"></span></div>
+  <div class="grain"></div>
+  <div class="vig"></div>
+</div>
+<script src="stage.js"></script>
+</body>
+</html>
