@@ -9,12 +9,12 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000}
 .blob{position:absolute;border-radius:50%;will-change:transform}
 .ghost{position:absolute;left:0;right:0;top:50%;margin-top:-420px;height:840px;text-align:center;font-size:880px;line-height:840px;font-weight:800;letter-spacing:-.04em;color:transparent;-webkit-text-stroke:3px rgba(255,255,255,.07);will-change:transform}
 .eq{position:absolute;left:0;right:0;top:580px;height:240px}
-.eq i{position:absolute;top:0;width:14px;height:240px;border-radius:7px;background:linear-gradient(180deg,var(--c1),var(--c2));box-shadow:0 0 28px color-mix(in srgb,var(--c1) 55%,transparent);will-change:transform,opacity}
+.eq i{position:absolute;top:0;width:14px;height:240px;border-radius:7px;background:linear-gradient(180deg,var(--c1),var(--c2));will-change:transform,opacity}
 .mark{position:absolute;left:885px;top:300px;width:150px;height:150px}
 .tile{position:absolute;inset:0;border-radius:42px;display:grid;place-items:center;color:rgba(255,255,255,.92);background:linear-gradient(145deg,rgba(255,255,255,.16),rgba(255,255,255,.05));border:1px solid rgba(255,255,255,.2);box-shadow:0 30px 80px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.3);will-change:transform}
 .tile svg{width:96px;height:96px}
 .ring{position:absolute;inset:0;border-radius:42px;border:2px solid var(--c1);opacity:0;will-change:transform,opacity}
 .label{position:absolute;left:0;right:0;top:488px;display:flex;justify-content:center;align-items:center;gap:18px;font-size:30px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.86);white-space:nowrap}
-.dot{width:14px;height:14px;border-radius:50%;background:var(--c1);box-shadow:0 0 16px var(--c1);will-change:opacity}
+.dot{width:14px;height:14px;border-radius:50%;background:var(--c1);will-change:opacity}
 .grain{position:absolute;inset:0;opacity:.05;pointer-events:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
 .vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(120% 100% at 50% 45%,transparent 55%,rgba(0,0,0,.45) 100%)}
