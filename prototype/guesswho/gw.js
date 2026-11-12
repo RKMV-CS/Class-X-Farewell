@@ -1,5 +1,7 @@
-/* Guess Who component. API: GW.mount(root,cfg) GW.timing GW.draw(k,l) GW.hideAll() GW.play(k,from,to)->Promise. Styles: gw.css
-   cfg.students[i] = {name, then, now, pos, hint?, photos?}  photos = 2-3 child photos that cross-fade before the flip (then = fallback).
+/* Guess Who component. API: GW.mount(root,cfg) GW.timingFor(k) GW.calcTiming(nThen,nNow,base) GW.draw(k,l) GW.hideAll() GW.play(k,from,to)->Promise. Styles: gw.css
+   GW.timing = alias of kid 0's timing (the preview page only); every round has its own length: GW.timingFor(k) = {enter,flip,exit,guessHold,revealHold,tFlip,tExit,ROUND}.
+   cfg.students[i] = {name, then, now, pos, hint?, photos?, nowPhotos?}  photos = 1-4 child photos that cross-fade before the flip, then fly out as polaroids on the side after it (then = fallback).
+   nowPhotos = 2+ current photos that cross-fade during the reveal (posNs = their framings; now = final/fallback photo).
    Everything animated is transform/opacity, and a pure function of (k,l). */
 (function () {
   const bez = (x1, y1, x2, y2) => t => {
@@ -10,40 +12,50 @@
   const E = bez(.22, 1, .36, 1), IO = bez(.65, 0, .35, 1);
   const cl = v => Math.max(0, Math.min(1, v)), ph = (t, a, d) => cl((t - a) / d);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const GW = window.GW = { timing: { enter: .9, flip: 1.1, exit: .7, guessHold: 6, revealHold: 3, tFlip: 6.9, tExit: 11, ROUND: 11.7 } };
+  const GW = window.GW = { timing: {} };
   let S = [], blobs = [], bgK = -1;
+  // thrown Then polaroids: 280x340 boxes, left/right of the card (card x652..1268), alternate sides (1 photo -> left), max 2 per side, clear of the plate (y842+) and the timer (gone by the flip)
+  const TH = [{ x: 190, y: 70, r: -8 }, { x: 1450, y: 150, r: 7 }, { x: 250, y: 440, r: 5 }, { x: 1400, y: 510, r: -6 }], THW = 280, THH = 340, OB = bez(.34, 1.5, .64, 1);
+  // per-kid timing: more Then photos -> longer guess (6/8/10 s, never over 10); more Now photos -> longer reveal
+  GW.calcTiming = (nThen, nNow, base) => {
+    const b = base || {}, g = v => b[v] != null ? b[v] : ({ enter: .9, flip: 1.1, exit: .7 })[v];
+    const enter = g('enter'), flip = g('flip'), exit = g('exit');
+    const guessHold = Math.min(10, b.guessHold != null ? b.guessHold : 6 + 2 * (nThen - 1)), revealHold = b.revealHold != null ? b.revealHold : 3 + .6 * nThen + 2.5 * (Math.max(1, nNow) - 1);
+    const tFlip = enter + guessHold, tExit = tFlip + flip + revealHold;
+    return { enter, flip, exit, guessHold, revealHold, tFlip, tExit, ROUND: tExit + exit };
+  };
+  GW.timingFor = k => (S[k] || S[0] || {}).tm;
   const DR = [[150, 90], [-130, 110], [170, -80], [120, 100]]; // blob drift amplitude px
 
   GW.mount = function (root, cfg) {
-    const d = { enter: .9, flip: 1.1, exit: .7, guessHold: 6, revealHold: 3 }, tm = {};
-    for (const key in d) tm[key] = cfg.timing && cfg.timing[key] != null ? cfg.timing[key] : d[key];
-    tm.guessHold = Math.min(10, tm.guessHold);   // the guess timer is never longer than 10 s
-    const tFlip = tm.enter + tm.guessHold, tExit = tFlip + tm.flip + tm.revealHold;
-    Object.assign(GW.timing, tm, { tFlip, tExit, ROUND: tExit + tm.exit });
     root.classList.add('gw');
     root.innerHTML = '<div class="gw-bg"><i class="gw-blob gw-b1"></i><i class="gw-blob gw-b2"></i><i class="gw-blob gw-b3"></i><i class="gw-blob gw-b4"></i></div>';
     blobs = [...root.querySelectorAll('.gw-blob')]; bgK = -1;
     S = cfg.students.map(s => {
       // pos = default object-position; posT[i] = per childhood photo, posN = the "now" photo (each photo has its own framing)
-      const pos = esc(s.pos || '50% 28%'), posN = esc(s.posN || s.pos || '50% 28%'), photos = (s.photos && s.photos.length ? s.photos : [s.then]).slice(0, 3);
+      const pos = esc(s.pos || '50% 28%'), posN = esc(s.posN || s.pos || '50% 28%'), photos = (s.photos && s.photos.length ? s.photos : [s.then]), nows = s.nowPhotos && s.nowPhotos.length ? s.nowPhotos : [s.now];
+      const tm = GW.calcTiming(photos.length, nows.length, cfg.timing);
       const el = document.createElement('div'); el.className = 'gw-slot';
       const lays = photos.map((p, i) => { const q = esc((s.posT && s.posT[i]) || s.pos || '50% 28%'); return `<div class="gw-lay"><img class="gw-soft" src="${esc(p)}" style="object-position:${q}" alt=""><img class="gw-sharp" src="${esc(p)}" style="object-position:${q}" alt=""></div>`; }).join('');
+      const nl = nows.map((p, i) => `<img src="${esc(p)}" style="object-position:${esc((s.posNs && s.posNs[i]) || posN)}" alt="${esc(s.name)}">`).join('');
+      const ths = photos.slice(0, TH.length).map((p, i) => `<div class="gw-th" style="left:${TH[i].x}px;top:${TH[i].y}px"><img src="${esc(p)}" style="object-position:${esc((s.posT && s.posT[i]) || s.pos || '50% 28%')}" alt=""></div>`).join('');
       const chars = [...s.name].map(c => `<span class="gw-c">${c === ' ' ? '&nbsp;' : esc(c)}</span>`).join('');
       const fs = s.name.length > 14 ? Math.max(36, Math.floor(60 * 14 / s.name.length)) : 60;
-      el.innerHTML = `<div class="gw-glow"></div><div class="gw-card"><div class="gw-flip">
+      el.innerHTML = `<div class="gw-glow"></div>${ths}<div class="gw-card"><div class="gw-flip">
         <div class="gw-face gw-then"><div class="gw-frame"><div class="gw-ph"><div class="gw-kb">${lays}</div><div class="gw-tint"></div><div class="gw-sheen"></div></div></div></div>
-        <div class="gw-face gw-now"><div class="gw-frame"><div class="gw-ph"><div class="gw-kb"><img src="${esc(s.now)}" style="object-position:${posN}" alt="${esc(s.name)}"></div><div class="gw-tint"></div><div class="gw-sheen"></div></div></div></div>
+        <div class="gw-face gw-now"><div class="gw-frame"><div class="gw-ph"><div class="gw-kb">${nl}</div><div class="gw-tint"></div><div class="gw-sheen"></div></div></div></div>
       </div></div>
       <div class="gw-timer"><div class="gw-tdisc"><svg viewBox="0 0 120 120"><circle class="gw-tbase" cx="60" cy="60" r="50" pathLength="100"/><circle class="gw-tring" cx="60" cy="60" r="50" pathLength="100"/></svg><b class="gw-tn">10</b></div><span class="gw-tcap">think!</span></div>
       <div class="gw-plate"><div class="gw-pt">Guess who<i>?</i></div><div class="gw-pn"><b style="font-size:${fs}px">${chars}</b>${cfg.tag ? `<span class="gw-tag">${esc(cfg.tag)}</span>` : ''}</div></div>
       ${s.hint ? `<div class="gw-hint">${esc(s.hint)}</div>` : ''}`;
       root.appendChild(el);
       const q = x => el.querySelector(x);
-      return { el, timer: q('.gw-timer'), tring: q('.gw-tring'), tn: q('.gw-tn'), tcap: q('.gw-tcap'), glow: q('.gw-glow'), card: q('.gw-card'), flip: q('.gw-flip'), plate: q('.gw-plate'), pt: q('.gw-pt'), tag: q('.gw-tag'), hint: q('.gw-hint'), chars: [...el.querySelectorAll('.gw-c')],
+      return { tm, el, ths: [...el.querySelectorAll('.gw-th')], nimgs: [...el.querySelectorAll('.gw-now .gw-kb img')], timer: q('.gw-timer'), tring: q('.gw-tring'), tn: q('.gw-tn'), tcap: q('.gw-tcap'), glow: q('.gw-glow'), card: q('.gw-card'), flip: q('.gw-flip'), plate: q('.gw-plate'), pt: q('.gw-pt'), tag: q('.gw-tag'), hint: q('.gw-hint'), chars: [...el.querySelectorAll('.gw-c')],
         lays: [...el.querySelectorAll('.gw-lay')], sharps: [...el.querySelectorAll('.gw-sharp')], kbT: q('.gw-then .gw-kb'), kbN: q('.gw-now .gw-kb'), shT: q('.gw-then .gw-sheen'), shN: q('.gw-now .gw-sheen'), imgs: [...el.querySelectorAll('img')] };
     });
+    GW.timing = S[0] ? S[0].tm : {};
     // resolves when all photos are decoded; GW.ready is the same promise
-    return GW.ready = Promise.all(S.flatMap(o => o.imgs).map(i => i.decode().catch(() => { i.style.visibility = 'hidden'; })));
+    return GW.ready = Promise.all(S.flatMap(o => o.imgs).map(i => i.decode().catch(() => { i.style.visibility = 'hidden'; const t = i.closest('.gw-th'); if (t) t.style.visibility = 'hidden'; })));
   };
 
   // aurora drift: envelope sin^2 is 0 (with zero slope) at l=0 and l=ROUND, so every round starts/ends on the identical calm frame
@@ -55,8 +67,9 @@
   GW.hideAll = () => { S.forEach(o => { o.el.style.visibility = 'hidden'; }); bg(null); bgK = -1; };
 
   GW.draw = function (k, l) {
-    const o = S[k], C = GW.timing, tFlip = C.tFlip, tExit = C.tExit;
+    const o = S[k];
     if (!o) return;
+    const C = o.tm, tFlip = C.tFlip, tExit = C.tExit;
     if (l < 0 || l > C.ROUND) { o.el.style.visibility = 'hidden'; if (bgK === k) { bg(null); bgK = -1; } return; }
     o.el.style.visibility = 'visible'; bgK = k; bg(l, C.ROUND);
     const p = E(ph(l, 0, C.enter)), pp = E(ph(l, .12, C.enter)), q = IO(ph(l, tExit, C.exit));
@@ -81,6 +94,14 @@
     o.kbT.style.transform = `scale(${1 + .05 * ph(l, 0, tFlip + C.flip * .5)})`;
     const cyc = ((l - C.enter - .4) % 3.4 + 3.4) % 3.4 / 3.4, u = l > C.enter && l < tFlip - .6 ? cl(cyc / .42) : 0;
     o.shT.style.opacity = Math.sin(Math.PI * u) * .9; o.shT.style.transform = `translate3d(${u * 1000}px,0,0) skewX(-16deg)`;
+    // several Now photos: evenly spaced cross-fades over the reveal hold, the last one stays
+    o.nimgs.forEach((im, i) => { im.style.opacity = i ? E(ph(l, tFlip + C.flip + i * C.revealHold / o.nimgs.length - .3, .7)) : 1; });
+    // Then photos fly out from behind the card as tilted polaroids (0.25 s apart, overshoot), stay, and fade with the card on dismiss
+    o.ths.forEach((th, i) => {
+      const T = TH[i], e = OB(ph(l, tFlip + C.flip * .7 + i * .25, .8)), dx = (960 - T.x - THW / 2) * (1 - e), dy = (429 - T.y - THH / 2) * (1 - e);
+      th.style.opacity = cl(ph(l, tFlip + C.flip * .7 + i * .25, .2)) * (1 - ph(l, tExit + C.exit * .15, C.exit * .7));
+      th.style.transform = `translate3d(${dx}px,${dy}px,0) rotate(${T.r + (1 - e) * (T.x < 960 ? -50 : 50)}deg) scale(${.3 + .7 * e})`;
+    });
     o.kbN.style.transform = `scale(${1.06 - .06 * E(ph(l, tFlip + C.flip * .35, 2.2))})`;
     const us = ph(l, tFlip + C.flip * .75, 1.3);
     o.shN.style.opacity = Math.sin(Math.PI * us) * .75; o.shN.style.transform = `translate3d(${us * 1000}px,0,0) skewX(-16deg)`;
