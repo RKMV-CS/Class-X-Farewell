@@ -1,212 +1,410 @@
 [
   {
+    "id": "standby_welcome",
+    "file": "standby.mp4",
+    "mode": "loop",
+    "label": "1 · Announcement: welcome (standby loop)"
+  },
+  {
+    "id": "v01_netflix_intro",
+    "file": "v01_netflix_intro.mp4",
+    "mode": "hold",
+    "label": "2-3 · Netflix intro + MB27 logo, ends on \"MB27 Presents / The Final Chapter\""
+  },
+  {
     "id": "01_store_download",
     "file": "01_store_download.mp4",
     "mode": "hold",
-    "label": "Store: download app"
+    "label": "4 · NDPify: store, download app"
   },
   {
     "id": "02_ndpify_open",
     "file": "02_ndpify_open.mp4",
     "mode": "hold",
-    "label": "Open NDPify"
+    "label": "4 · NDPify: open app"
   },
   {
     "id": "03_home_trending",
     "file": "03_home_trending.mp4",
     "mode": "hold",
-    "label": "Home: trending"
+    "label": "4 · NDPify: home, trending"
   },
   {
     "id": "04_library_playlist",
     "file": "04_library_playlist.mp4",
     "mode": "hold",
-    "label": "Library: playlist"
+    "label": "4 · NDPify: library, playlist"
   },
   {
     "id": "05_nowplaying_song1",
     "file": "05_nowplaying_song1.mp4",
     "mode": "loop",
-    "label": "Now playing: song 1 (loop)"
+    "label": "5 · Song 1 (now playing, loop)"
+  },
+  {
+    "id": "song02",
+    "file": "song02.mp4",
+    "mode": "loop",
+    "label": "6 · Song 2 (loop)"
+  },
+  {
+    "id": "standby_act1",
+    "file": "standby.mp4",
+    "mode": "loop",
+    "label": "7 · Act 1 Shruti + Alekhya, live (standby loop)"
+  },
+  {
+    "id": "song03",
+    "file": "song03.mp4",
+    "mode": "loop",
+    "label": "8 · Song 3 (loop)"
+  },
+  {
+    "id": "song04",
+    "file": "song04.mp4",
+    "mode": "loop",
+    "label": "9 · Song 4 (loop)"
   },
   {
     "id": "06_adbreak_intro",
     "file": "06_adbreak_intro.mp4",
     "mode": "hold",
-    "label": "Ad break intro"
+    "label": "10 · Act 2: ad break intro"
   },
   {
     "id": "07_ad_video",
     "file": "07_ad_video.mp4",
     "mode": "hold",
-    "label": "Ad video"
+    "label": "10 · Act 2: ad video (long)"
   },
   {
     "id": "08_continuing_ad",
     "file": "08_continuing_ad.mp4",
     "mode": "hold",
-    "label": "Continuing after ad"
+    "label": "10 · Act 2: continuing ad (long)"
   },
   {
     "id": "12_gw1_guess",
     "file": "12_gw1_guess.mp4",
     "mode": "hold",
-    "label": "Guess who 1 (Arya): mystery, 10 s timer, held for the guess"
+    "label": "Act 2 · Guess who 1/13 (Arya): mystery, timer, held for the guess"
   },
   {
     "id": "13_gw1_reveal",
     "file": "13_gw1_reveal.mp4",
     "mode": "hold",
-    "label": "Guess who 1 (Arya): reveal, stays up until you press"
+    "label": "Act 2 · Guess who 1/13 (Arya): reveal, stays up until you press"
   },
   {
     "id": "14_gw1_off",
     "file": "14_gw1_off.mp4",
     "mode": "hold",
-    "label": "Guess who 1 (Arya): dismiss the card"
+    "label": "Act 2 · Guess who 1/13 (Arya): dismiss the card"
   },
   {
     "id": "15_gw2_guess",
     "file": "15_gw2_guess.mp4",
     "mode": "hold",
-    "label": "Guess who 2 (Sadhu): mystery, 10 s timer, held for the guess"
+    "label": "Act 2 · Guess who 2/13 (Sadhu): mystery, timer, held for the guess"
   },
   {
     "id": "16_gw2_reveal",
     "file": "16_gw2_reveal.mp4",
     "mode": "hold",
-    "label": "Guess who 2 (Sadhu): reveal, stays up until you press"
+    "label": "Act 2 · Guess who 2/13 (Sadhu): reveal, stays up until you press"
   },
   {
     "id": "17_gw2_off",
     "file": "17_gw2_off.mp4",
     "mode": "hold",
-    "label": "Guess who 2 (Sadhu): dismiss the card"
+    "label": "Act 2 · Guess who 2/13 (Sadhu): dismiss the card"
   },
   {
     "id": "18_gw3_guess",
     "file": "18_gw3_guess.mp4",
     "mode": "hold",
-    "label": "Guess who 3 (Mayukh): mystery, 10 s timer, held for the guess"
+    "label": "Act 2 · Guess who 3/13 (Mayukh): mystery, timer, held for the guess"
   },
   {
     "id": "19_gw3_reveal",
     "file": "19_gw3_reveal.mp4",
     "mode": "hold",
-    "label": "Guess who 3 (Mayukh): reveal, stays up until you press"
+    "label": "Act 2 · Guess who 3/13 (Mayukh): reveal, stays up until you press"
   },
   {
     "id": "20_gw3_off",
     "file": "20_gw3_off.mp4",
     "mode": "hold",
-    "label": "Guess who 3 (Mayukh): dismiss the card"
+    "label": "Act 2 · Guess who 3/13 (Mayukh): dismiss the card"
   },
   {
     "id": "21_gw4_guess",
     "file": "21_gw4_guess.mp4",
     "mode": "hold",
-    "label": "Guess who 4 (Padmashree): mystery, 10 s timer, held for the guess"
+    "label": "Act 2 · Guess who 4/13 (Aritra): mystery, timer, held for the guess"
   },
   {
     "id": "22_gw4_reveal",
     "file": "22_gw4_reveal.mp4",
     "mode": "hold",
-    "label": "Guess who 4 (Padmashree): reveal, stays up until you press"
+    "label": "Act 2 · Guess who 4/13 (Aritra): reveal, stays up until you press"
   },
   {
     "id": "23_gw4_off",
     "file": "23_gw4_off.mp4",
     "mode": "hold",
-    "label": "Guess who 4 (Padmashree): dismiss the card"
+    "label": "Act 2 · Guess who 4/13 (Aritra): dismiss the card"
   },
   {
     "id": "24_gw5_guess",
     "file": "24_gw5_guess.mp4",
     "mode": "hold",
-    "label": "Guess who 5 (Ashutosh): mystery, 10 s timer, held for the guess"
+    "label": "Act 2 · Guess who 5/13 (Tamoghna): mystery, timer, held for the guess"
   },
   {
     "id": "25_gw5_reveal",
     "file": "25_gw5_reveal.mp4",
     "mode": "hold",
-    "label": "Guess who 5 (Ashutosh): reveal, stays up until you press"
+    "label": "Act 2 · Guess who 5/13 (Tamoghna): reveal, stays up until you press"
   },
   {
     "id": "26_gw5_off",
     "file": "26_gw5_off.mp4",
     "mode": "hold",
-    "label": "Guess who 5 (Ashutosh): dismiss the card"
+    "label": "Act 2 · Guess who 5/13 (Tamoghna): dismiss the card"
   },
   {
     "id": "27_gw6_guess",
     "file": "27_gw6_guess.mp4",
     "mode": "hold",
-    "label": "Guess who 6 (Arijit): mystery, 10 s timer, held for the guess"
+    "label": "Act 2 · Guess who 6/13 (Padmashree): mystery, timer, held for the guess"
   },
   {
     "id": "28_gw6_reveal",
     "file": "28_gw6_reveal.mp4",
     "mode": "hold",
-    "label": "Guess who 6 (Arijit): reveal, stays up until you press"
+    "label": "Act 2 · Guess who 6/13 (Padmashree): reveal, stays up until you press"
   },
   {
     "id": "29_gw6_off",
     "file": "29_gw6_off.mp4",
     "mode": "hold",
-    "label": "Guess who 6 (Arijit): dismiss the card"
+    "label": "Act 2 · Guess who 6/13 (Padmashree): dismiss the card"
   },
   {
     "id": "30_gw7_guess",
     "file": "30_gw7_guess.mp4",
     "mode": "hold",
-    "label": "Guess who 7 (Ujjwal): mystery, 10 s timer, held for the guess"
+    "label": "Act 2 · Guess who 7/13 (Abhijnan): mystery, timer, held for the guess"
   },
   {
     "id": "31_gw7_reveal",
     "file": "31_gw7_reveal.mp4",
     "mode": "hold",
-    "label": "Guess who 7 (Ujjwal): reveal, stays up until you press"
+    "label": "Act 2 · Guess who 7/13 (Abhijnan): reveal, stays up until you press"
   },
   {
     "id": "32_gw7_off",
     "file": "32_gw7_off.mp4",
     "mode": "hold",
-    "label": "Guess who 7 (Ujjwal): dismiss the card"
+    "label": "Act 2 · Guess who 7/13 (Abhijnan): dismiss the card"
   },
   {
     "id": "33_gw8_guess",
     "file": "33_gw8_guess.mp4",
     "mode": "hold",
-    "label": "Guess who 8 (Anish): mystery, 10 s timer, held for the guess"
+    "label": "Act 2 · Guess who 8/13 (Shreyan): mystery, timer, held for the guess"
   },
   {
     "id": "34_gw8_reveal",
     "file": "34_gw8_reveal.mp4",
     "mode": "hold",
-    "label": "Guess who 8 (Anish): reveal, stays up until you press"
+    "label": "Act 2 · Guess who 8/13 (Shreyan): reveal, stays up until you press"
   },
   {
     "id": "35_gw8_off",
     "file": "35_gw8_off.mp4",
     "mode": "hold",
-    "label": "Guess who 8 (Anish): dismiss the card"
+    "label": "Act 2 · Guess who 8/13 (Shreyan): dismiss the card"
   },
   {
-    "id": "09_nowplaying_song2",
-    "file": "09_nowplaying_song2.mp4",
+    "id": "36_gw9_guess",
+    "file": "36_gw9_guess.mp4",
+    "mode": "hold",
+    "label": "Act 2 · Guess who 9/13 (Ashutosh): mystery, timer, held for the guess"
+  },
+  {
+    "id": "37_gw9_reveal",
+    "file": "37_gw9_reveal.mp4",
+    "mode": "hold",
+    "label": "Act 2 · Guess who 9/13 (Ashutosh): reveal, stays up until you press"
+  },
+  {
+    "id": "38_gw9_off",
+    "file": "38_gw9_off.mp4",
+    "mode": "hold",
+    "label": "Act 2 · Guess who 9/13 (Ashutosh): dismiss the card"
+  },
+  {
+    "id": "39_gw10_guess",
+    "file": "39_gw10_guess.mp4",
+    "mode": "hold",
+    "label": "Act 2 · Guess who 10/13 (Abhinandan): mystery, timer, held for the guess"
+  },
+  {
+    "id": "40_gw10_reveal",
+    "file": "40_gw10_reveal.mp4",
+    "mode": "hold",
+    "label": "Act 2 · Guess who 10/13 (Abhinandan): reveal, stays up until you press"
+  },
+  {
+    "id": "41_gw10_off",
+    "file": "41_gw10_off.mp4",
+    "mode": "hold",
+    "label": "Act 2 · Guess who 10/13 (Abhinandan): dismiss the card"
+  },
+  {
+    "id": "42_gw11_guess",
+    "file": "42_gw11_guess.mp4",
+    "mode": "hold",
+    "label": "Act 2 · Guess who 11/13 (Arijit): mystery, timer, held for the guess"
+  },
+  {
+    "id": "43_gw11_reveal",
+    "file": "43_gw11_reveal.mp4",
+    "mode": "hold",
+    "label": "Act 2 · Guess who 11/13 (Arijit): reveal, stays up until you press"
+  },
+  {
+    "id": "44_gw11_off",
+    "file": "44_gw11_off.mp4",
+    "mode": "hold",
+    "label": "Act 2 · Guess who 11/13 (Arijit): dismiss the card"
+  },
+  {
+    "id": "45_gw12_guess",
+    "file": "45_gw12_guess.mp4",
+    "mode": "hold",
+    "label": "Act 2 · Guess who 12/13 (Ujjwal): mystery, timer, held for the guess"
+  },
+  {
+    "id": "46_gw12_reveal",
+    "file": "46_gw12_reveal.mp4",
+    "mode": "hold",
+    "label": "Act 2 · Guess who 12/13 (Ujjwal): reveal, stays up until you press"
+  },
+  {
+    "id": "47_gw12_off",
+    "file": "47_gw12_off.mp4",
+    "mode": "hold",
+    "label": "Act 2 · Guess who 12/13 (Ujjwal): dismiss the card"
+  },
+  {
+    "id": "48_gw13_guess",
+    "file": "48_gw13_guess.mp4",
+    "mode": "hold",
+    "label": "Act 2 · Guess who 13/13 (Anish): mystery, timer, held for the guess"
+  },
+  {
+    "id": "49_gw13_reveal",
+    "file": "49_gw13_reveal.mp4",
+    "mode": "hold",
+    "label": "Act 2 · Guess who 13/13 (Anish): reveal, stays up until you press"
+  },
+  {
+    "id": "50_gw13_off",
+    "file": "50_gw13_off.mp4",
+    "mode": "hold",
+    "label": "Act 2 · Guess who 13/13 (Anish): dismiss the card"
+  },
+  {
+    "id": "song05",
+    "file": "song05.mp4",
     "mode": "loop",
-    "label": "Now playing: song 2 (loop)"
+    "label": "11 · Song 5 (loop)"
   },
   {
-    "id": "10_extra_video_1",
-    "file": "10_extra_video_1.mp4",
-    "mode": "hold",
-    "label": "Extra video 1"
+    "id": "song06",
+    "file": "song06.mp4",
+    "mode": "loop",
+    "label": "12 · Song 6 (loop)"
   },
   {
-    "id": "11_extra_video_2",
-    "file": "11_extra_video_2.mp4",
+    "id": "v02_first_steps_jr",
+    "file": "v02_first_steps_jr.mp4",
     "mode": "hold",
-    "label": "Extra video 2"
+    "label": "13-14 · \"First Steps\" + Jr. Section video"
+  },
+  {
+    "id": "song07",
+    "file": "song07.mp4",
+    "mode": "loop",
+    "label": "15 · Song 7 (loop)"
+  },
+  {
+    "id": "song08",
+    "file": "song08.mp4",
+    "mode": "loop",
+    "label": "16 · Song 8 (loop)"
+  },
+  {
+    "id": "v03a_tour_class8",
+    "file": "v03a_tour_class8.mp4",
+    "mode": "hold",
+    "label": "17 · Act 4 Tour: Class VIII"
+  },
+  {
+    "id": "v03b_tour_class9",
+    "file": "v03b_tour_class9.mp4",
+    "mode": "hold",
+    "label": "17 · Act 4 Tour: Class IX"
+  },
+  {
+    "id": "v03c_tour_class10",
+    "file": "v03c_tour_class10.mp4",
+    "mode": "hold",
+    "label": "17 · Act 4 Tour: Class X"
+  },
+  {
+    "id": "song09",
+    "file": "song09.mp4",
+    "mode": "loop",
+    "label": "18 · Song 9 (loop)"
+  },
+  {
+    "id": "song10",
+    "file": "song10.mp4",
+    "mode": "loop",
+    "label": "19 · Song 10 (loop)"
+  },
+  {
+    "id": "song11",
+    "file": "song11.mp4",
+    "mode": "loop",
+    "label": "20 · Song 11 (loop)"
+  },
+  {
+    "id": "v04_farewell_edit",
+    "file": "v04_farewell_edit.mp4",
+    "mode": "hold",
+    "label": "21 · Act 5 Farewell edit (last school)"
+  },
+  {
+    "id": "standby_closing",
+    "file": "standby.mp4",
+    "mode": "loop",
+    "label": "22 · Announcement: closing (standby loop)"
+  },
+  {
+    "id": "v05_finale",
+    "file": "v05_finale.mp4",
+    "mode": "hold",
+    "label": "23 · Every Story Has an Ending (finale)"
+  },
+  {
+    "id": "vb_farewell_no_last_school",
+    "file": "vb_farewell_no_last_school.mp4",
+    "mode": "hold",
+    "label": "BACKUP · Farewell edit without last school"
   }
 ]
