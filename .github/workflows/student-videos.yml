@@ -1,0 +1,80 @@
+name: Student videos (fades)
+
+# Manual. Downloads each student video from Drive (ids live in the repo secret STUDENT_VIDEO_IDS, never in the repo), re-encodes it at
+# native resolution/fps with a fade from black (and a fade to black unless the clip holds on a title card), uploads artifact `student-clips`
+# (1 day) + `student-preview` (first/last frame contact sheet). Fails if a faded edge frame is not black.
+on:
+  workflow_dispatch:
+
+jobs:
+  video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        # out = cue clip name; fadeout = 1 fades to black at the end (v01 holds on the "MB27 Presents" card)
+        include:
+          - { out: v01_netflix_intro, fadeout: 0 }
+          - { out: v02_first_steps_jr, fadeout: 1 }
+          - { out: v03a_tour_class8, fadeout: 1 }
+          - { out: v03b_tour_class9, fadeout: 1 }
+          - { out: v03c_tour_class10, fadeout: 1 }
+          - { out: v04a_sr_edit, fadeout: 1 }
+          - { out: v04b_last_school, fadeout: 1 }
+          - { out: v05_finale, fadeout: 1 }
+    steps:
+      - uses: actions/checkout@v4
+      - name: ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Download, fade, check
+        env:
+          IDS: ${{ secrets.STUDENT_VIDEO_IDS }}
+          OUT: ${{ matrix.out }}
+          FADEOUT: ${{ matrix.fadeout }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::$(echo "$IDS" | jq -r ".${OUT}")"
+          ID=$(echo "$IDS" | jq -r ".${OUT}")
+          mkdir -p work out
+          curl -fsSL "https://drive.usercontent.google.com/download?id=${ID}&export=download&confirm=t" -o work/src.mp4
+          file work/src.mp4 | grep -qi "media\|mp4\|iso" || { echo "not a video (Drive sign-in page?)"; exit 1; }
+          D=$(ffprobe -v error -show_entries format=duration -of csv=p=0 work/src.mp4)
+          FPS=$(ffprobe -v error -select_streams v:0 -show_entries stream=r_frame_rate -of csv=p=0 work/src.mp4)
+          # 31 fps source (3rd sr edit) -> 30; otherwise keep the native rate
+          case "$FPS" in 31/1) RATE="-r 30";; *) RATE="";; esac
+          F=0.8
+          VF="fade=t=in:st=0:d=$F"; AF="afade=t=in:st=0:d=$F"
+          if [ "$FADEOUT" = "1" ]; then
+            S=$(echo "$D - $F" | bc -l)
+            VF="$VF,fade=t=out:st=$S:d=$F"; AF="$AF,afade=t=out:st=$S:d=$F"
+          fi
+          ffmpeg -y -v error -i work/src.mp4 -vf "$VF,format=yuv420p" -af "$AF" $RATE \
+            -c:v libx264 -preset veryslow -crf 10 -profile:v high -maxrate 60M -bufsize 120M \
+            -colorspace bt709 -color_primaries bt709 -color_trc bt709 \
+            -c:a aac -b:a 256k -movflags +faststart "out/${OUT}.mp4"
+          D2=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "out/${OUT}.mp4")
+          echo "$OUT: src ${D}s ${FPS} -> out ${D2}s"
+          # edge frames: mean luma of the first frame must be near black; last frame too when fading out
+          lum() { ffmpeg -v error -ss "$1" -i "out/${OUT}.mp4" -frames:v 1 -vf "scale=64:36,format=gray" -f rawvideo - | od -An -tu1 -v | tr -s ' ' '\n' | awk 'NF{s+=$1;n++}END{printf "%d", s/n}'; }
+          L0=$(lum 0); echo "first-frame luma $L0"
+          [ "$L0" -le 20 ] || { echo "first frame is not black"; exit 1; }
+          if [ "$FADEOUT" = "1" ]; then
+            L1=$(lum "$(echo "$D2 - 0.05" | bc -l)"); echo "last-frame luma $L1"
+            [ "$L1" -le 20 ] || { echo "last frame is not black"; exit 1; }
+          fi
+          # contact sheet frames (first, middle, last)
+          mkdir -p prev
+          for t in 0 $(echo "$D2 / 2" | bc -l) $(echo "$D2 - 0.05" | bc -l); do ffmpeg -v error -ss "$t" -i "out/${OUT}.mp4" -frames:v 1 -vf scale=480:-1 "prev/${OUT}_$(printf '%.0f' "$t").jpg"; done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: student-clip-${{ matrix.out }}
+          path: out/*.mp4
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: student-preview-${{ matrix.out }}
+          path: prev/*.jpg
+          retention-days: 1
