@@ -1,92 +1,224 @@
 [
   {
-    "id": "1iCkoYfowdoZD_CyDtUnb7-BUAYYycNSC",
-    "file": "Aritra Then 1 \u2014 Enhanced.png",
+    "id": "1V7cmkxC0WJw8-mqsW3N-ScO_iwIsTQvW",
+    "file": "Arya Then — Restored.png",
+    "slug": "arya",
+    "slot": "then1"
+  },
+  {
+    "id": "1x4mc0eUPEwy5eXSC_JAfaqWpfdvXpe1e",
+    "file": "Arya Now — Restored.png",
+    "slug": "arya",
+    "slot": "now"
+  },
+  {
+    "id": "19H6moQYkllVUWEiW4qYm-SVqjTyP8NmX",
+    "file": "Sadhu Then 1 — Restored.png",
+    "slug": "sadhu",
+    "slot": "then1"
+  },
+  {
+    "id": "1lo0ymvKlZBCBIjOsKqZBAyskyaFn5KBw",
+    "file": "Sadhu Then 2 — Restored.png",
+    "slug": "sadhu",
+    "slot": "then2"
+  },
+  {
+    "id": "1A_4NJMv9tG3Pw4hTuQ51AvLvB62UUrHw",
+    "file": "Sadhu Then 3 — Restored.png",
+    "slug": "sadhu",
+    "slot": "then3"
+  },
+  {
+    "id": "1unucZy1UpZiqDMPXN-_sp3sKnYorTnAR",
+    "file": "Sadhu Now — Restored.png",
+    "slug": "sadhu",
+    "slot": "now"
+  },
+  {
+    "id": "1MqSm6yVgfIVgFgwQbOmnBB4NN3ZreFIJ",
+    "file": "Mayukh Then 2 — Restored.png",
+    "slug": "bali",
+    "slot": "then1"
+  },
+  {
+    "id": "18Ajh-clDX7fgNjH5Y2HpywN1qN1V7Fbb",
+    "file": "Mayukh Before 1 — Restored.png",
+    "slug": "bali",
+    "slot": "then2"
+  },
+  {
+    "id": "1tUNt70DGuHDsSpbZfnb8FgPcOsRjlkJY",
+    "file": "Bali Now — Restored.png",
+    "slug": "bali",
+    "slot": "now"
+  },
+  {
+    "id": "1wf9sP3QSl-Ak4NcfoNqFmeHa7hr-eqxZ",
+    "file": "Aritra Then 1 — Restored.png",
     "slug": "ganja",
     "slot": "then1"
   },
   {
-    "id": "1YZrdYBqH-ow-patZlHpEucMWXhf8cWaF",
-    "file": "Aritra Then 2 \u2014 Enhanced.png",
+    "id": "1ZGuB3rB122BDZReoaX7cZGEoh2WNMIMJ",
+    "file": "Aritra Then 2 — Restored.png",
     "slug": "ganja",
     "slot": "then2"
   },
   {
-    "id": "18cjfD-Hex1Z3_nizH7YY4TYtAHyRu_JS",
-    "file": "Aritra Now \u2014 Upscaled.png",
+    "id": "1ODxgGzQFYjQKUlNRXqSZ0SX13Me5zhw_",
+    "file": "Aritra Now — Restored Portrait.png",
     "slug": "ganja",
     "slot": "now"
   },
   {
-    "id": "1E6M825S1aNSjRh9AaQcGNh3AIpRFIJWx",
-    "file": "Tamoghna Then \u2014 Enhanced.png",
+    "id": "1H0GNaxDfn7cVNkGtoYUPKhV1Ahk81VUh",
+    "file": "Aditya Mandal Then 1 — Enhanced.png",
+    "slug": "aditya",
+    "slot": "then1"
+  },
+  {
+    "id": "17ZqiZfR9fJgP-8AZywyyf3zJdGWvo2HH",
+    "file": "Aditya Mandal Then 2 — Enhanced.png",
+    "slug": "aditya",
+    "slot": "then2"
+  },
+  {
+    "id": "1SeYijHwFUy0szDxgfy0lUQvLCChleZHk",
+    "file": "Aditya Now — Restored.png",
+    "slug": "aditya",
+    "slot": "now"
+  },
+  {
+    "id": "12vr-5Kq0a31JF1xJdnKjd9a9zlFMa7z7",
+    "file": "Tamoghna Then — Restored.png",
     "slug": "miya",
     "slot": "then1"
   },
   {
-    "id": "1Z2M6SLNjIoqBj6bHIrBwTI2GX0K3VJ3p",
-    "file": "Tamoghna Now \u2014 Upscaled.png",
+    "id": "1AdRxQKh6BOB454noms8r78IKXMYLtBS5",
+    "file": "Tamoghna Now — Restored.png",
     "slug": "miya",
     "slot": "now"
   },
   {
-    "id": "1qrOJ1gnHLSeRQLC5z2aEoNBOOU6Z46Q3",
-    "file": "Abhijnan Then 1 \u2014 Enhanced.png",
+    "id": "1kSQeQKVjiLLWimHnbn0x6F3Eha01hhs3",
+    "file": "Padmashree Then — Restored.png",
+    "slug": "padmashree",
+    "slot": "then1"
+  },
+  {
+    "id": "1GWZMRgM-Q3CVDuMjlySOBWmXzrHRLqSw",
+    "file": "Padmashree Now — Restored.png",
+    "slug": "padmashree",
+    "slot": "now"
+  },
+  {
+    "id": "1CxXsY3982rEZmJ7eejy5eQceBWkJ260S",
+    "file": "Abhijnan Then 1 — Restored.png",
     "slug": "abhijnan",
     "slot": "then1"
   },
   {
-    "id": "1qI_sMNFXCMfVKL36O49vUiky5ykLjQxY",
-    "file": "Abhijnan Now \u2014 Upscaled.png",
+    "id": "1TmCY3jxdp76wiwaX67EFlli1tilE2yve",
+    "file": "Abhijnan Now — Restored.png",
     "slug": "abhijnan",
     "slot": "now"
   },
   {
-    "id": "1i9ICHtHW9m2P3olV0wQcsCrgS4sj0TxR",
-    "file": "Shreyan Then 1 \u2014 Enhanced.png",
+    "id": "1vgjNBiEfP95DpbLMjC4Z-dijlioqRZmN",
+    "file": "Shreyan Then 1 — Restored.png",
     "slug": "shreyan",
     "slot": "then1"
   },
   {
-    "id": "1jsAnKafWmeT2oidiLzP2S4pV50Txql6Y",
-    "file": "Shreyan Now \u2014 Upscaled.png",
+    "id": "1594eN47v-Yy0KfV3yaTn0YIXLSXLA0Vr",
+    "file": "Shreyan Now — Restored.png",
     "slug": "shreyan",
+    "slot": "now"
+  },
+  {
+    "id": "1rcs6wnHQz6uDnfJyfgctENZR5d1gSOb6",
+    "file": "Ashutosh Then — Restored.png",
+    "slug": "langra",
+    "slot": "then1"
+  },
+  {
+    "id": "1iDsokPoCEa4c5YZja8sZV6TXYJOroC3B",
+    "file": "Ashutosh Now — Restored.png",
+    "slug": "langra",
     "slot": "now"
   },
   {
     "id": "1nkNvQ2NHjB4MLM7LTfeVMYER4WNdw25w",
-    "file": "Abhinandan Then 1 \u2014 Enhanced.png",
+    "file": "Abhinandan Then 1 — Enhanced.png",
     "slug": "thobi",
     "slot": "then1"
   },
   {
     "id": "12GuguvyneWAlK1j2ghAZ3QPyjFiCsrPO",
-    "file": "Abhinandan Then 2 \u2014 Enhanced.png",
+    "file": "Abhinandan Then 2 — Enhanced.png",
     "slug": "thobi",
     "slot": "then2"
   },
   {
     "id": "1qedUcC9rV0l1pkhY_BMXuw1m3PXNlmv4",
-    "file": "Abhinandan Then 3 \u2014 Enhanced.png",
+    "file": "Abhinandan Then 3 — Enhanced.png",
     "slug": "thobi",
     "slot": "then3"
   },
   {
     "id": "1fMhSK3nmrwI5IUJqcVhQhTLW7h6M8sMg",
-    "file": "Abhinandan Then 4 \u2014 Enhanced.png",
+    "file": "Abhinandan Then 4 — Enhanced.png",
     "slug": "thobi",
     "slot": "then4"
   },
   {
-    "id": "11_dHtdB0QGsmN1-_FNpYQ5Tcz7Yaioi9",
-    "file": "Thobi Now 1 \u2014 Upscaled.png",
+    "id": "1E57bz7Oa6BK7Shq5vST166NZowqhyfsL",
+    "file": "Abhinandan Now 1 — Restored.png",
     "slug": "thobi",
     "slot": "now1"
   },
   {
-    "id": "1yLNANzi9OZtylXt0NNluJglgKYeA3FtQ",
-    "file": "Thobi Now 2 \u2014 Upscaled.png",
+    "id": "12I78aH8yA2g8zHCKL5sYcOnEZ8Yr8ZLf",
+    "file": "Abhinandan Now 2 — Restored.png",
     "slug": "thobi",
     "slot": "now2"
+  },
+  {
+    "id": "1fxRe8guV-Rf3u2iUnMLarfuzjHyrTv9x",
+    "file": "Arijit Then 1 — Restored.png",
+    "slug": "arijit",
+    "slot": "then1"
+  },
+  {
+    "id": "1GqWJ5gbgCEVH588DET0Cermk_04_YLSc",
+    "file": "Arijit Now 1 — Restored.png",
+    "slug": "arijit",
+    "slot": "now"
+  },
+  {
+    "id": "1TUSPF2efHi0cv0Qlc3KYcoe2GcxmcX3A",
+    "file": "Ujjwal Then 1 — Restored.png",
+    "slug": "ujjwal",
+    "slot": "then1"
+  },
+  {
+    "id": "1-dc4pVVgBrp3eQOltK1ohim3RUZNRkg9",
+    "file": "Ujjwal Now 1 — Restored.png",
+    "slug": "ujjwal",
+    "slot": "now"
+  },
+  {
+    "id": "173AARWEj0-wVQdRmx0Uju8zaIIhiSD0d",
+    "file": "Anish Then 1 — Restored.png",
+    "slug": "anish",
+    "slot": "then1"
+  },
+  {
+    "id": "1JZtmO3eTJYj_QK8iSn9ojaC7DR8NY5Gx",
+    "file": "Anish Now 1 — Restored.png",
+    "slug": "anish",
+    "slot": "now"
   }
 ]

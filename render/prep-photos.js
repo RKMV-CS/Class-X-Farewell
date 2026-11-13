@@ -5,7 +5,7 @@
 // Input: prototype/img/guesswho/sources.json, an array of
 //   { "id":   "<Google Drive file id>",
 //     "file": "<original filename, e.g. 'Aritra Then 1 — Enhanced.png'>",   (informational; only its extension is used)
-//     "slug": "ganja|miya|abhijnan|shreyan|thobi",
+//     "slug": "one of SLUGS below",
 //     "slot": "then1|then2|then3|then4|now|now1|now2" }
 // Output: prototype/img/guesswho/<slug>_<slot>.jpg  (committed)
 //         prototype/img/guesswho/_orig/<slug>_<slot>.<ext>  (downloaded originals, gitignored)
@@ -14,9 +14,9 @@
 const path = require('path');
 const fs = require('fs');
 
-const SLUGS = ['ganja', 'miya', 'abhijnan', 'shreyan', 'thobi'];
+const SLUGS = ['arya', 'sadhu', 'bali', 'ganja', 'aditya', 'miya', 'padmashree', 'abhijnan', 'shreyan', 'langra', 'thobi', 'arijit', 'ujjwal', 'anish'];
 const SLOTS = ['then1', 'then2', 'then3', 'then4', 'now', 'now1', 'now2'];
-const MAX_PX = 1600, QUALITY = 88;
+const MAX_PX = 2400, QUALITY = 95;
 const SHEET = { cols: 4, tile: 360, label: 28 };
 
 const outName = ({ slug, slot }) => {
