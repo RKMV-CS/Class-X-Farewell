@@ -28,7 +28,7 @@ env:
   # Render machines; keep in sync with the matrix below. Estimated work (render/shard-weights.json, 13 kids) = 14018 s; at ~16 min (960 s) per machine that is 14.6 -> 15.
   # 15 is the plateau: greedy makespan 970 s = the slowest segment (003c_open); 14 machines = 1033 s, 16 gains nothing. 15 render + 5 loops machines = 20 concurrent (the limit).
   SHARDS: 15
-  FULL_CRF: 15
+  FULL_CRF: 10
   FULL_POOL: 1        # parallel browsers per machine (runners have 7-16 GB)
 
 jobs:

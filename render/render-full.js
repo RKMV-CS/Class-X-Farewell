@@ -13,7 +13,7 @@ const args = process.argv.slice(2);
 const opt = n => (args.find(a => a.startsWith('--' + n + '=')) || '').slice(n.length + 3);   // --out=file.mp4, --music=track.webm
 const ROOT = __dirname, FR = path.join(ROOT, 'frames60'), SEG = path.join(ROOT, 'out', 'full'), OUT = path.resolve(ROOT, opt('out') || path.join('out', 'NDPify_full_1080p60.mp4'));
 const FFMPEG = path.join(ROOT, 'node_modules', '@remotion', 'compositor-win32-x64-msvc', 'ffmpeg.exe');
-const CRF = process.env.FULL_CRF || '15', POOL = +process.env.FULL_POOL || 3;
+const CRF = process.env.FULL_CRF || '10', POOL = +process.env.FULL_POOL || 3;
 const keep = args.includes('--keep-frames');
 const only = (args.find(a => a.startsWith('--only=')) || '').slice(7).split(',').filter(Boolean);
 const shard = (args.find(a => a.startsWith('--shard=')) || '').slice(8).split('/').map(Number), sharded = shard.length === 2 && shard[1] > 0;
@@ -57,7 +57,7 @@ async function one([id, def]) {
   if (fs.existsSync(mp4) && !only.length) { console.log(`[${id}] exists, skipped (delete out/full/${id}.mp4 to redo)`); return; }
   const cap = await capture(id, def, FR);
   const tmp = mp4 + '.part.mp4';
-  run(FFMPEG, ['-y', '-v', 'error', '-framerate', String(FPS), '-i', path.join(cap.dir, '%05d.png'), '-c:v', 'libx264', '-preset', 'slow', '-crf', CRF,
+  run(FFMPEG, ['-y', '-v', 'error', '-framerate', String(FPS), '-i', path.join(cap.dir, '%05d.png'), '-c:v', 'libx264', '-preset', 'veryslow', '-crf', CRF, '-maxrate', '60M', '-bufsize', '120M',
     '-profile:v', 'high', '-level', '4.2', '-pix_fmt', 'yuv420p', '-g', String(FPS * 2), '-bf', '2', '-r', String(FPS),
     '-vf', 'scale=in_range=full:out_range=tv:out_color_matrix=bt709', '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv', tmp]);
   fs.renameSync(tmp, mp4);
@@ -67,7 +67,7 @@ async function one([id, def]) {
 
 (async () => {
   fs.mkdirSync(SEG, { recursive: true });
-  const todo = joinOnly ? [] : mine(segs).filter(([id]) => !only.length || only.some(o => id.includes(o)));
+  const todo = joinOnly ? [] : mine(segs.filter(([id]) => !only.length || only.some(o => id.includes(o))));
   if (args.includes('--list')) { console.log(todo.map(s => s[0]).join(' ')); return; }
   const q = todo.slice(); let failed = 0;
   await Promise.all(Array.from({ length: Math.min(POOL, q.length) }, async () => { while (q.length) { const s = q.shift(); try { await one(s); } catch (e) { failed++; console.error(`[${s[0]}] FAILED: ${e.message}`); } } }));

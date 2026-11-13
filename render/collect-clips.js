@@ -1,4 +1,4 @@
-// node render/collect-clips.js <segmentsDir> <loopsDir> <outDir> [cues.json]
+// node render/collect-clips.js <segmentsDir> <loopsDir|-> <outDir> [cues.json]   (loopsDir '-' = Guess Who clips only: no scene clips, no loops)
 // Release job: gathers the controller's clip set. Guess Who segments (render-full.js ids 009_gw1_mystery ...) get the controller names
 // (12_gw1_guess, 13_gw1_reveal, 14_gw1_off, 15_gw2_guess ...) and the 17 min loop clips (render-long.js) are copied as they are.
 // N (number of kids) = count of `*_gwK_guess` ids in cues.json; nothing else is read from it, so cues.json can change freely.
@@ -31,7 +31,7 @@ const FADE_IN = new Set(['06_adbreak_intro', '12_gw1_guess']);
 const FADE_S = 0.6;
 // x264 re-encode with a fade-from-black head (the only place a clip is re-encoded; needs a full ffmpeg: the CI apt build has `fade`).
 function fadeIn(ffmpeg, src, dst) {
-  run(ffmpeg, ['-y', '-v', 'error', '-i', src, '-vf', `fade=t=in:st=0:d=${FADE_S}`, '-c:v', 'libx264', '-crf', '15', '-preset', 'slow', '-pix_fmt', 'yuv420p',
+  run(ffmpeg, ['-y', '-v', 'error', '-i', src, '-vf', `fade=t=in:st=0:d=${FADE_S}`, '-c:v', 'libx264', '-crf', '10', '-preset', 'veryslow', '-maxrate', '60M', '-bufsize', '120M', '-pix_fmt', 'yuv420p',
     '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709', '-c:a', 'copy', '-movflags', '+faststart', dst]);
 }
 const sceneParts = (files, sc) => files.filter((f) => sc.segs.includes(f.slice(0, 3))).sort();
@@ -88,9 +88,9 @@ if (require.main === module) {
   if (missing.length) { console.error(`missing Guess Who segments for ${n} kids: ${missing.join(', ')}`); process.exit(1); }
   fs.mkdirSync(outDir, { recursive: true });
   for (const [id, name] of renames) { const src = path.join(segDir, id + '.mp4'), dst = path.join(outDir, name + '.mp4'); if (FADE_IN.has(name)) fadeIn(process.env.FFMPEG || 'ffmpeg', src, dst); else fs.copyFileSync(src, dst); if (!cueIds.has(name)) console.warn(`warning: ${name} is not a cue id in cues.json`); }
-  buildScenes(segDir, outDir, process.env.FFMPEG || 'ffmpeg', path.join(outDir, '.tmp'));
-  fs.rmSync(path.join(outDir, '.tmp'), { recursive: true, force: true });
-  const loops = mp4s(loopDir);
+  const gwOnly = loopDir === '-';
+  if (!gwOnly) { buildScenes(segDir, outDir, process.env.FFMPEG || 'ffmpeg', path.join(outDir, '.tmp')); fs.rmSync(path.join(outDir, '.tmp'), { recursive: true, force: true }); }
+  const loops = gwOnly ? [] : mp4s(loopDir);
   for (const f of loops) fs.copyFileSync(path.join(loopDir, f), path.join(outDir, f));
   console.log(`${n} kids: ${renames.length} Guess Who clips renamed, ${loops.length} loop clips copied -> ${outDir}`);
   console.log(`loops: ${loops.join(' ')}\nnot copied (not controller clips): ${skipped.join(' ')}`);
