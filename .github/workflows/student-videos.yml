@@ -56,16 +56,21 @@ jobs:
           D2=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "out/${OUT}.mp4")
           echo "$OUT: src ${D}s ${FPS} -> out ${D2}s"
           # edge frames: mean luma of the first frame must be near black; last frame too when fading out
-          lum() { ffmpeg -v error -ss "$1" -i "out/${OUT}.mp4" -frames:v 1 -vf "scale=64:36,format=gray" -f rawvideo - | od -An -tu1 -v | tr -s ' ' '\n' | awk 'NF{s+=$1;n++}END{printf "%d", s/n}'; }
-          L0=$(lum 0); echo "first-frame luma $L0"
+          lum() { ffmpeg -v error "$@" -frames:v 1 -vf "scale=64:36,format=gray" -f rawvideo - | od -An -tu1 -v | tr -s ' ' '
+' | awk 'NF{s+=$1;n++}END{printf "%d", n?s/n:255}'; }
+          lastlum() { ffmpeg -v error -sseof -0.3 -i "out/${OUT}.mp4" -vf "scale=64:36,format=gray" -f rawvideo - | tail -c 2304 | od -An -tu1 -v | tr -s ' ' '
+' | awk 'NF{s+=$1;n++}END{printf "%d", n?s/n:255}'; }
+          L0=$(lum -i "out/${OUT}.mp4"); echo "first-frame luma $L0"
           [ "$L0" -le 20 ] || { echo "first frame is not black"; exit 1; }
           if [ "$FADEOUT" = "1" ]; then
-            L1=$(lum "$(echo "$D2 - 0.05" | bc -l)"); echo "last-frame luma $L1"
+            L1=$(lastlum); echo "last-frame luma $L1"
             [ "$L1" -le 20 ] || { echo "last frame is not black"; exit 1; }
           fi
           # contact sheet frames (first, middle, last)
           mkdir -p prev
-          for t in 0 $(echo "$D2 / 2" | bc -l) $(echo "$D2 - 0.05" | bc -l); do ffmpeg -v error -ss "$t" -i "out/${OUT}.mp4" -frames:v 1 -vf scale=480:-1 "prev/${OUT}_$(printf '%.0f' "$t").jpg"; done
+          ffmpeg -v error -i "out/${OUT}.mp4" -frames:v 1 -vf scale=480:-1 "prev/${OUT}_a_first.jpg"
+          ffmpeg -v error -ss "$(echo "$D2 / 2" | bc -l)" -i "out/${OUT}.mp4" -frames:v 1 -vf scale=480:-1 "prev/${OUT}_b_mid.jpg"
+          ffmpeg -v error -sseof -0.3 -i "out/${OUT}.mp4" -vf scale=480:-1 -update 1 "prev/${OUT}_c_last.jpg"
       - uses: actions/upload-artifact@v4
         with:
           name: student-clip-${{ matrix.out }}
