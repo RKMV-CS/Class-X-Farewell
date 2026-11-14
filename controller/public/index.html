@@ -129,6 +129,32 @@ select{background:var(--panel2);border:1.5px solid var(--line);border-radius:.6r
 .upl .bar{height:.45rem}
 .upl .bar i{transition:none}
 
+/* sequence editor (Edit sequence ON) */
+.chead .hdr-r{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.chead .tog.edit-on{border-color:var(--amber);color:var(--amber)}
+.etools{display:none;flex-wrap:wrap;align-items:center;gap:.4rem;padding:0 .9rem .6rem .8rem}
+.list.editing .etools{display:flex}
+.list.editing .tools{display:none}
+.list.editing .cue{cursor:default}
+.etools .mini{padding:0 .55rem}
+.mini.grip{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;border-color:var(--amber);color:var(--amber)}
+.mini.danger{border-color:var(--red);color:#ffb3b6}
+.list li.dragging{position:relative;z-index:3;background:var(--panel2);box-shadow:0 .6rem 1.4rem rgba(0,0,0,.55);outline:2px solid var(--amber);will-change:transform}
+.list li.dragging .grip{cursor:grabbing}
+.list li.dropline{position:absolute;left:0;right:0;height:0;padding:0;border:0;border-top:3px solid var(--amber);z-index:4;pointer-events:none}
+.efoot{margin-top:.6rem;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+.efoot small{color:var(--mute);flex:1 1 14rem}
+.modal .box.wide{max-width:34rem}
+.modal input[type=text]{width:100%;min-height:2.9rem;margin:.2rem 0 1rem;padding:0 .7rem;border-radius:.6rem;border:1.5px solid var(--line);background:var(--panel2);color:var(--text);font:inherit}
+.libhead{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin:.4rem 0}
+.libhead select{flex:1 1 12rem}
+.liblist{list-style:none;margin:.5rem 0 .8rem;padding:0;max-height:min(40vh,18rem);overflow-y:auto;border:1px solid var(--line);border-radius:.6rem}
+.liblist li{display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.4rem .6rem}
+.liblist li+li{border-top:1px solid var(--line)}
+.liblist .nm{overflow-wrap:anywhere;font-size:.9rem}
+.liblist .nm small{display:block;color:var(--mute)}
+.libmsg{color:var(--mute);font-size:.85rem;min-height:1.2rem;margin:.2rem 0}
+
 /* toast + modal */
 .toast{position:fixed;left:1rem;right:1rem;top:calc(4.8rem + env(safe-area-inset-top));z-index:20;margin:0 auto;max-width:34rem;padding:.7rem .9rem;border-radius:.6rem;
   background:#10301f;border:1px solid var(--go);color:#d6ffe6;opacity:0;transform:translateY(-.5rem);pointer-events:none;transition:opacity .2s,transform .2s;overflow-wrap:anywhere}
@@ -219,9 +245,11 @@ kbd{font:600 .8rem var(--disp);padding:.15rem .4rem;border:1px solid var(--line)
   </main>
 
   <section class="cues" aria-label="Cue list">
-    <div class="chead"><h2>Cues</h2><small>Tap a cue twice to jump</small></div>
+    <div class="chead"><h2>Cues</h2><div class="hdr-r"><small id="cueHint">Tap a cue twice to jump</small><button type="button" class="tog" id="undoBtn" hidden>Undo</button><button type="button" class="tog" id="editBtn" aria-pressed="false">Edit sequence</button></div></div>
     <input type="file" id="pick" accept="video/*" hidden>
+    <input type="file" id="addPick" accept="video/*" hidden>
     <ol class="list" id="list"><li class="empty">Loading cues</li></ol>
+    <div class="efoot" id="efoot" hidden><button type="button" class="tog" id="addBtn">+ Add clip or upload video</button><small>Drag the handle to reorder (or use the arrows). Changes are saved at once. Removing a cue keeps its video file.</small></div>
   </section>
 </div>
 
@@ -234,7 +262,18 @@ kbd{font:600 .8rem var(--disp);padding:.15rem .4rem;border:1px solid var(--line)
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTxt" hidden>
-  <div class="box"><p id="modalTxt"></p><div class="btns"><button type="button" id="modalNo">Cancel</button><button type="button" class="danger" id="modalYes">Replace anyway</button></div></div>
+  <div class="box"><p id="modalTxt"></p><input type="text" id="modalIn" maxlength="120" autocomplete="off" hidden><div class="btns"><button type="button" id="modalNo">Cancel</button><button type="button" class="danger" id="modalYes">Replace anyway</button></div></div>
+</div>
+<div class="modal" id="libModal" role="dialog" aria-modal="true" aria-labelledby="libTitle" hidden>
+  <div class="box wide">
+    <h2 id="libTitle">Add a clip to the show</h2>
+    <div class="libhead"><label for="libAt" class="tag">Insert</label><select id="libAt" aria-label="Where to insert the new cue"></select></div>
+    <div class="libhead"><button type="button" class="tog" id="libUp">Upload a new video ...</button><span class="libmsg" id="libMsg"></span></div>
+    <div class="upl" id="libProg" hidden><div class="bar"><i id="libBar"></i></div><span id="libPct"></span></div>
+    <p class="tag" style="margin:.4rem 0 0">Videos in the clips folder that are not in the show:</p>
+    <ul class="liblist" id="libList"><li class="libmsg">Loading ...</li></ul>
+    <div class="btns"><button type="button" id="libClose">Close</button></div>
+  </div>
 </div>
 
 <script>
@@ -274,8 +313,8 @@ function applyState(s){
   if(cur){b.hidden=false;b.className='badge '+cur.mode;setText(b,cur.mode==='loop'?'LOOP':'HOLD')}else b.hidden=true;
   setText($('nextLabel'),nxt?nxt.label:(s.index<0?'-':'End of show'));
   setText($('nextSub'),s.index<0?'Starts the show':(nxt?'Cue '+(s.index+2):'End of show'));
-  if(cues.length!==s.total)loadCues();
-  if(s.index!==lastIdx){lastIdx=s.index;markRows(true)}
+  if(!dragging&&(cues.length!==s.total||(s.rev!==undefined&&s.rev!==cuesRev)))loadCues();
+  if(s.index!==lastIdx){lastIdx=s.index;markRows(!editing)}
 }
 
 let ended=false,fullscreen=false;
@@ -374,14 +413,16 @@ addEventListener('keyup',e=>{if(e.key===' '&&!modalOpen&&!/^(SELECT|INPUT|TEXTAR
 
 /* ---------- cues ---------- */
 let rows=[],refs=[],tickEls=[],armed=0,armT=0,cuesBusy=false,modalOpen=false,upl=null;
+let cuesRev=-1,editing=false,dragging=null;
 async function loadCues(){
-  if(cuesBusy)return;cuesBusy=true;
+  if(cuesBusy||dragging)return;cuesBusy=true;
   try{
     const r=await api('/api/cues');
-    if(r&&Array.isArray(r.cues)){
-      // same cue count: refresh rows in place (keeps scroll position and an upload in progress)
-      if(r.cues.length===rows.length&&rows.length){cues=r.cues;cues.forEach((c,i)=>renderRow(i))}
-      else{cues=r.cues;buildCues()}
+    if(r&&Array.isArray(r.cues)&&!dragging){
+      // same list and revision: refresh rows in place (keeps scroll position and an upload in progress)
+      const same=r.rev===cuesRev&&r.cues.length===rows.length&&rows.length;
+      cues=r.cues;cuesRev=r.rev;
+      if(same)cues.forEach((c,i)=>renderRow(i));else buildCues();
       cuesBusy=false;return;
     }
   }catch(e){}
@@ -402,9 +443,16 @@ function renderRow(i){
   const u=upl&&upl.id===c.id;
   r.up.hidden=!u;if(u){setText(r.upTxt,upl.txt);r.upBar.style.transform='scaleX('+upl.pct+')'}
   r.rb.disabled=r.mb.disabled=!!upl;
+  r.eUp.disabled=i===0;r.eDn.disabled=i===cues.length-1;
+  r.eUp.setAttribute('aria-label','Move cue '+c.n+' up');r.eDn.setAttribute('aria-label','Move cue '+c.n+' down');
+  r.eRn.setAttribute('aria-label','Rename cue '+c.n);r.eRm.setAttribute('aria-label','Remove cue '+c.n+' from the show');
+  r.grip.setAttribute('aria-label','Drag to reorder cue '+c.n+', '+c.label);
+  r.eRm.disabled=isPlaying(c);
 }
+const isPlaying=c=>!!(st&&st.current&&st.current.id===c.id);
+function mini(txt,act,i,cls){const b=document.createElement('button');b.type='button';b.className='mini'+(cls?' '+cls:'');b.dataset.act=act;b.dataset.i=i;b.textContent=txt;return b}
 function buildCues(){
-  const list=$('list'),ticks=$('ticks');
+  const list=$('list'),ticks=$('ticks'),keep=list.scrollTop;
   list.textContent='';ticks.textContent='';rows=[];refs=[];tickEls=[];
   cues.forEach((c,i)=>{
     const li=document.createElement('li'),b=document.createElement('button');
@@ -426,28 +474,36 @@ function buildCues(){
     const bar=document.createElement('div');bar.className='bar';const upBar=document.createElement('i');bar.append(upBar);
     const upTxt=document.createElement('span');up.append(bar,upTxt);
     tools.append(meta,acts,up);
-    li.append(b,tools);list.append(li);rows.push(b);refs.push({btn:b,bd,mb,rb,meta,up,upBar,upTxt});
+    const et=document.createElement('div');et.className='etools';
+    const grip=mini('☰ Drag','grip',i,'grip'),eUp=mini('▲','up',i),eDn=mini('▼','down',i),eRn=mini('Rename','rename',i),eRm=mini('Remove','remove',i,'danger');
+    et.append(grip,eUp,eDn,eRn,eRm);
+    li.append(b,et,tools);list.append(li);rows.push(b);refs.push({btn:b,bd,mb,rb,meta,up,upBar,upTxt,grip,eUp,eDn,eRn,eRm});
     const t=document.createElement('i');ticks.append(t);tickEls.push(t);
     renderRow(i);
   });
   if(!cues.length)list.innerHTML='<li class="empty">No cues found</li>';
-  markRows(true);
+  markRows(!keep&&!editing);
+  if(keep)list.scrollTop=keep;
 }
 
 /* ---------- toast / modal ---------- */
 let toastT=0;
 function toast(t,err){const el=$('toast');el.textContent=t;el.classList.toggle('err',!!err);el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),err?9000:5000)}
-function confirmBox(msg,yes){
+// confirmBox(msg, yesLabel) -> true/false. With opts.input (initial text) it shows a text field and resolves to the typed string, or false.
+function confirmBox(msg,yes,opts){
   return new Promise(done=>{
-    const m=$('modal'),y=$('modalYes'),n=$('modalNo'),opener=document.activeElement;
-    setText($('modalTxt'),msg);setText(y,yes);m.hidden=false;modalOpen=true;n.focus();
+    const m=$('modal'),y=$('modalYes'),n=$('modalNo'),inp=$('modalIn'),opener=document.activeElement,withInput=opts&&typeof opts.input==='string';
+    setText($('modalTxt'),msg);setText(y,yes);inp.hidden=!withInput;if(withInput)inp.value=opts.input;
+    m.hidden=false;modalOpen=true;(withInput?inp:n).focus();if(withInput)inp.select();
+    const ok=()=>end(withInput?inp.value:true);
     const end=v=>{m.hidden=true;modalOpen=false;y.onclick=n.onclick=null;document.removeEventListener('keydown',key,true);if(opener&&opener.focus)opener.focus();done(v)};
     const key=e=>{
       if(e.key==='Escape'){e.preventDefault();end(false)}
-      else if(e.key==='Tab'){e.preventDefault();(document.activeElement===n?y:n).focus()}
+      else if(e.key==='Enter'&&withInput){e.preventDefault();ok()}
+      else if(e.key==='Tab'){e.preventDefault();const order=withInput?[inp,n,y]:[n,y];const k=order.indexOf(document.activeElement);order[(k+(e.shiftKey?order.length-1:1))%order.length].focus()}
     };
     document.addEventListener('keydown',key,true);
-    y.onclick=()=>end(true);n.onclick=()=>end(false);
+    y.onclick=ok;n.onclick=()=>end(false);
   });
 }
 
@@ -457,7 +513,12 @@ let target=null;
 $('list').addEventListener('click',async e=>{
   const mb=e.target.closest('.mini');if(!mb||mb.disabled)return;
   const c=cues[+mb.dataset.i];if(!c)return;buzz();
-  if(mb.dataset.act==='replace'){target=c;pick.value='';pick.click();return}
+  const act=mb.dataset.act;
+  if(act==='replace'){target=c;pick.value='';pick.click();return}
+  if(act==='up'||act==='down'){moveCue(+mb.dataset.i,+mb.dataset.i+(act==='up'?-1:1));return}
+  if(act==='rename'){renameCue(c);return}
+  if(act==='remove'){removeCue(c);return}
+  if(act==='grip')return;
   const mode=c.mode==='loop'?'hold':'loop';
   try{
     const r=await api('/api/cue/'+encodeURIComponent(c.id),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({mode})});
@@ -498,6 +559,7 @@ function upload(c,f,confirmed){
 function markRows(scroll){
   const idx=st?st.index:-1;
   rows.forEach((b,i)=>{
+    if(refs[i]&&cues[i])refs[i].eRm.disabled=isPlaying(cues[i]);
     b.classList.toggle('cur',i===idx);b.classList.toggle('past',i<idx);
     if(i===idx)b.setAttribute('aria-current','true');else b.removeAttribute('aria-current');
     tickEls[i].className=i===idx?'cur':i<idx?'past':'';
@@ -513,11 +575,169 @@ function disarm(){
   armed=0;
 }
 $('list').addEventListener('click',e=>{
-  const b=e.target.closest('.cue');if(!b)return;
+  const b=e.target.closest('.cue');if(!b||editing)return;
   const n=+b.dataset.n;buzz();
   if(armed===n){disarm();send('/api/jump/'+n);return}
   disarm();armed=n;b.classList.add('armed');b.setAttribute('aria-pressed','true');
   armT=setTimeout(disarm,3000);
+});
+
+/* ---------- sequence editor: reorder / add / remove / rename / undo ---------- */
+function setEditing(on){
+  editing=on;disarm();
+  $('list').classList.toggle('editing',on);$('efoot').hidden=!on;$('undoBtn').hidden=!on;
+  const b=$('editBtn');b.setAttribute('aria-pressed',String(on));b.classList.toggle('edit-on',on);
+  setText(b,on?'Done editing':'Edit sequence');
+  setText($('cueHint'),on?'Editing: tapping a cue does not jump':'Tap a cue twice to jump');
+}
+$('editBtn').addEventListener('click',()=>{buzz();setEditing(!editing)});
+
+async function editCall(method,path,body){
+  try{
+    const r=await api(path,{method,headers:{'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)},8000);
+    if(!r.ok)throw new Error(r.error||'failed');
+    return r;
+  }catch(e){toast('Not saved: '+(e.name==='AbortError'?'no answer from the controller':e.message),true);return null}
+}
+async function reload(){cuesRev=-1;await loadCues();kickPoll()}
+async function moveCue(from,to,refocus){
+  if(from===to||to<0||to>=cues.length)return;
+  const ids=cues.map(c=>c.id);ids.splice(to,0,ids.splice(from,1)[0]);
+  // optimistic: show the new order at once, then confirm with the controller (it also keeps the playing cue current)
+  const by=new Map(cues.map(c=>[c.id,c]));
+  cues=ids.map((id,i)=>{const c=by.get(id);c.n=i+1;return c});
+  if(st&&st.current)st.index=cues.findIndex(c=>c.id===st.current.id);
+  buildCues();
+  if(refocus&&refs[to])refs[to].grip.focus();
+  const r=await editCall('PUT','/api/cues/order',{ids});
+  if(r)cuesRev=r.rev;else cuesRev=-1;
+  loadCues();kickPoll();
+}
+async function renameCue(c){
+  const v=await confirmBox('Rename cue '+c.n+' (shown in the cue list and on the NEXT line)','Save',{input:c.label});
+  if(v===false||!v.trim()||v.trim()===c.label)return;
+  if(await editCall('POST','/api/cue/'+encodeURIComponent(c.id),{label:v.trim()})){toast('Renamed');await reload()}
+}
+async function removeCue(c){
+  if(!await confirmBox('Remove cue '+c.n+' "'+c.label+'" from the show? Its video file stays in the clips folder and can be added again.','Remove'))return;
+  if(await editCall('DELETE','/api/cue/'+encodeURIComponent(c.id))){toast('Removed "'+c.label+'". Use Undo to bring it back.');await reload()}
+}
+$('undoBtn').addEventListener('click',async()=>{
+  buzz();
+  if(await editCall('POST','/api/undo')){toast('Undone');await reload()}
+});
+
+/* drag handle: Pointer Events so mouse and touch share one path (HTML5 drag-and-drop does not work on phones) */
+function dragFrame(){
+  const d=dragging;if(!d)return;
+  const list=$('list'),rc=list.getBoundingClientRect(),edge=56;
+  if(d.lastY<rc.top+edge)list.scrollTop-=Math.ceil((rc.top+edge-d.lastY)/5);
+  else if(d.lastY>rc.bottom-edge)list.scrollTop+=Math.ceil((d.lastY-(rc.bottom-edge))/5);
+  dragLayout(d);
+  d.raf=requestAnimationFrame(dragFrame);
+}
+// Position the lifted row and work out the slot it would drop into. Also run once on release so a fast flick
+// (pointerup before the next animation frame) still lands where the finger ended.
+function dragLayout(d){
+  const list=$('list');
+  const dy=d.lastY-d.startY+(list.scrollTop-d.startScroll);
+  d.li.style.transform='translateY('+dy+'px)';
+  const others=[...list.children].filter(x=>x!==d.li&&!x.classList.contains('dropline'));
+  const mid=d.li.offsetTop+d.li.offsetHeight/2+dy;
+  d.to=others.filter(o=>o.offsetTop+o.offsetHeight/2<mid).length;
+  const last=others[others.length-1];
+  d.line.style.top=(d.to<others.length?others[d.to].offsetTop:(last?last.offsetTop+last.offsetHeight:0))+'px';
+}
+function dragEnd(commit){
+  const d=dragging;if(!d)return;
+  if(commit)dragLayout(d);
+  cancelAnimationFrame(d.raf);d.line.remove();d.li.classList.remove('dragging');d.li.style.transform='';
+  try{d.grip.releasePointerCapture(d.pid)}catch(e){}
+  dragging=null;
+  if(commit&&d.to!==d.from)moveCue(d.from,d.to);
+}
+$('list').addEventListener('pointerdown',e=>{
+  const grip=e.target.closest('.grip');
+  if(!grip||!editing||dragging||(e.pointerType==='mouse'&&e.button!==0))return;
+  const li=grip.closest('li'),from=rows.indexOf(li.querySelector('.cue')),list=$('list');
+  if(from<0)return;
+  e.preventDefault();buzz();
+  try{grip.setPointerCapture(e.pointerId)}catch(x){}
+  const line=document.createElement('li');line.className='dropline';line.setAttribute('aria-hidden','true');list.append(line);
+  li.classList.add('dragging');
+  dragging={li,grip,line,from,to:from,pid:e.pointerId,startY:e.clientY,lastY:e.clientY,startScroll:list.scrollTop,raf:0};
+  dragging.raf=requestAnimationFrame(dragFrame);
+});
+$('list').addEventListener('pointermove',e=>{if(dragging&&e.pointerId===dragging.pid)dragging.lastY=e.clientY});
+$('list').addEventListener('pointerup',e=>{if(dragging&&e.pointerId===dragging.pid)dragEnd(true)});
+$('list').addEventListener('pointercancel',e=>{if(dragging&&e.pointerId===dragging.pid)dragEnd(false)});
+// keyboard: with the handle focused, Arrow Up/Down moves the cue
+$('list').addEventListener('keydown',e=>{
+  const grip=e.target.closest&&e.target.closest('.grip');
+  if(!grip||(e.key!=='ArrowUp'&&e.key!=='ArrowDown'))return;
+  e.preventDefault();e.stopPropagation();
+  const i=+grip.dataset.i;moveCue(i,i+(e.key==='ArrowUp'?-1:1),true);
+});
+
+/* add a clip: library of unused videos in clips/, or upload a new one */
+const libModal=$('libModal');
+let libBusy=false;
+function libKey(e){if(e.key==='Escape'&&!libBusy){e.preventDefault();closeLib()}}
+function closeLib(){libModal.hidden=true;modalOpen=false;document.removeEventListener('keydown',libKey,true);$('addBtn').focus()}
+function libWhere(){return $('libAt').value||undefined}
+async function openLib(){
+  const sel=$('libAt');sel.textContent='';
+  const end=document.createElement('option');end.value='';end.textContent='At the end of the show';sel.append(end);
+  cues.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent='After cue '+c.n+': '+c.label;sel.append(o)});
+  if(st&&st.current)sel.value=st.current.id;
+  setText($('libMsg'),'');$('libProg').hidden=true;
+  libModal.hidden=false;modalOpen=true;document.addEventListener('keydown',libKey,true);$('libClose').focus();
+  await refreshLib();
+}
+async function refreshLib(){
+  const ul=$('libList');
+  try{
+    const r=await api('/api/library',null,8000);
+    if(!r.ok)throw new Error(r.error||'failed');
+    ul.textContent='';
+    if(!r.files.length){const li=document.createElement('li');li.className='libmsg';li.textContent='No unused videos in the clips folder. Upload one above.';ul.append(li);return}
+    for(const f of r.files){
+      const li=document.createElement('li'),nm=document.createElement('span'),sm=document.createElement('small'),b=document.createElement('button');
+      nm.className='nm';nm.append(f.file);sm.textContent=fmtSize(f.size);nm.append(sm);
+      b.type='button';b.className='mini';b.textContent='Add';b.setAttribute('aria-label','Add '+f.file+' to the show');
+      b.addEventListener('click',()=>addFile(f.file,b));
+      li.append(nm,b);ul.append(li);
+    }
+  }catch(e){ul.textContent='';const li=document.createElement('li');li.className='libmsg';li.textContent='Could not read the clips folder: '+e.message;ul.append(li)}
+}
+async function addFile(file,btn){
+  if(btn)btn.disabled=true;
+  const r=await editCall('POST','/api/cues',{file,after:libWhere()});
+  if(r){toast('Added as cue '+r.cue.n+': "'+r.cue.label+'". Drag it to move, Rename to relabel.');await reload();await refreshLib()}
+  else if(btn)btn.disabled=false;
+}
+$('addBtn').addEventListener('click',()=>{buzz();openLib()});
+$('libClose').addEventListener('click',()=>{if(!libBusy)closeLib()});
+$('libUp').addEventListener('click',()=>{if(!libBusy){$('addPick').value='';$('addPick').click()}});
+$('addPick').addEventListener('change',()=>{
+  const f=$('addPick').files[0];if(!f)return;
+  if(!EXTS.test(f.name)){setText($('libMsg'),'Unsupported file type. Use mp4, mov, mkv, webm or m4v.');return}
+  if(f.size>MAXB){setText($('libMsg'),'File is larger than 6 GB.');return}
+  libBusy=true;$('libUp').disabled=true;$('libProg').hidden=false;$('libBar').style.transform='scaleX(0)';setText($('libMsg'),'');setText($('libPct'),'Uploading 0%');
+  const x=new XMLHttpRequest();
+  x.open('POST','/api/library');
+  x.setRequestHeader('x-filename',encodeURIComponent(f.name));
+  x.setRequestHeader('content-type','application/octet-stream');
+  const done=msg=>{libBusy=false;$('libUp').disabled=false;$('libProg').hidden=true;if(msg)setText($('libMsg'),msg)};
+  x.upload.onprogress=ev=>{if(!ev.lengthComputable)return;const p=ev.loaded/ev.total;$('libBar').style.transform='scaleX('+p+')';setText($('libPct'),'Uploading '+Math.round(p*100)+'% ('+fmtSize(ev.loaded)+' of '+fmtSize(ev.total)+')')};
+  x.onload=async()=>{
+    let r={};try{r=JSON.parse(x.responseText)}catch(e){}
+    if(x.status!==200||!r.ok){done('Upload failed: '+(r.error||'HTTP '+x.status));return}
+    done('');await addFile(r.file);await refreshLib();
+  };
+  x.onerror=()=>done('Upload failed: connection lost');
+  x.onabort=()=>done('Upload cancelled');
+  x.send(f);
 });
 
 /* ---------- preview ---------- */

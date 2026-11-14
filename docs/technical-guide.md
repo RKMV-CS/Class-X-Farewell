@@ -98,23 +98,30 @@ Node + Express. Files:
 
 | File | Role |
 |---|---|
-| `cueState.js` | Pure state machine: cue list validation (`mode` must be `hold`/`loop`), index, next/prev/jump. |
+| `cueState.js` | Pure state machine: cue list validation (`validateCues`: unique ids, `mode` `hold`/`loop`, plain file names with a video extension), index, next/prev/jump, `setCues()` (sequence edits; keeps the playing cue current by id, refuses to drop it, bumps `rev`). |
 | `controller.js` | Debounce (300 ms), logging, calls into VLC, `tick()` every 500 ms that restarts a `loop` cue VLC parked at its end (unless the operator paused). |
 | `vlc.js` | VLC HTTP interface client (`requests/status.json`, Basic auth with empty user and `VLC_PASSWORD`, default `farewell`). |
 | `vlcProc.js`, `launch.js` | Find VLC, build args (`--play-and-pause`, `--no-qt-video-autoresize`, fullscreen on a chosen screen), pick free ports, detect displays, write `start.generated.bat`, run it in its own console. `--dry-run` only checks. |
 | `displays.js` | Windows display list + screenshot via PowerShell. |
-| `server.js` | Express app, keyboard handler (raw mode), QR code, API below. |
-| `public/index.html` | Operator dashboard and phone remote. |
+| `server.js` | Express app, keyboard handler (raw mode), QR code, API below. Sequence edits all go through one `commit()`: validate, swap, atomic save of `cues.json`, undo snapshot (20, in memory); a failed save rolls back. |
+| `public/index.html` | Operator dashboard and phone remote, including the **Edit sequence** mode (Pointer-Events drag handle that works with mouse and touch, arrows, rename, remove, add/upload dialog, undo). Reloads the cue list when `rev` changes, so a second dashboard sees edits within a second. |
+| `setup.js`, `clips.manifest.json` | "Download and go": `npm run setup` installs dependencies, downloads the finished clips from the private release named in the manifest (`gh release download` into `clips/.download`, then moves size-verified files into place), verifies sizes, checks `cues.json` against `clips/`. `--check` offline, `--repair`, `--write-manifest`. |
+| `../setup.bat`, `../setup.sh` | Run `setup.js` then `launch.js`. |
 | `start.sh`, `start.bat`, `gen-dummy-clips.sh` | Legacy launchers (default VLC port 8080) and practice clips. Prefer `launch.js`. |
 
 API (no authentication; private network only):
 
 | Route | Purpose |
 |---|---|
-| `GET /api/state`, `GET /api/cues` | current/next cue and the full list |
+| `GET /api/state`, `GET /api/cues` | current/next cue and the full list; both carry `rev` (bumps on every sequence edit) |
 | `POST /api/next`, `/api/prev`, `/api/replay`, `/api/pause` | operator actions |
 | `POST /api/jump/:n` | jump to cue number n (1-based) |
-| `POST /api/cue/:id` | body `{"mode":"hold"|"loop"}`: change a cue's mode, saved to `cues.json` |
+| `POST /api/cue/:id` | body `{"mode":"hold"|"loop"}` and/or `{"label":"..."}` (1-120 chars): saved to `cues.json`, undoable |
+| `PUT /api/cues/order` | body `{"ids":[...]}` listing every cue id exactly once: reorder; the playing cue stays current |
+| `POST /api/cues` | body `{"file","label"?,"mode"?,"after"?}`: add a cue from a video already in `clips/` (not already used); id = file stem made unique |
+| `DELETE /api/cue/:id` | remove from the sequence (file stays on disk); 409 for the playing cue; the last cue cannot be removed |
+| `GET /api/library`, `POST /api/library` | videos in `clips/` that no cue uses; upload a new one (raw body, `x-filename`, never overwrites) |
+| `POST /api/undo` | restore the previous sequence (keeps each cue's current file name; 409 if it would drop the playing cue) |
 | `POST /api/clip/:id` | replace a cue's video file (raw body, filename in `x-filename`, video extensions only, 6 GB limit); the dashboard uses it |
 | `GET /api/vlc`, `POST /api/fullscreen` | VLC status, fullscreen toggle |
 | `GET /api/displays`, `GET/POST /api/screen` | list screens, read/set the projector screen |
@@ -179,7 +186,7 @@ Env knobs: `FULL_CRF` (default 10), `FULL_POOL` (parallel browsers per machine; 
 ## Tests
 
 ```bash
-cd controller && npm test                    # state machine, debounce, loop watcher, launcher, mock VLC (13 tests)
+cd controller && npm test                    # state machine, debounce, loop watcher, launcher, sequence editor, setup checks, mock VLC (28 tests)
 node render/collect-clips.test.js            # clip naming/planning
 node render/prep-photos.js --selftest        # photo naming + contact-sheet grid
 node render/check-seams.js --selftest        # seam math
