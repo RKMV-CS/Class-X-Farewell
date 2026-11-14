@@ -56,10 +56,9 @@ jobs:
           D2=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "out/${OUT}.mp4")
           echo "$OUT: src ${D}s ${FPS} -> out ${D2}s"
           # edge frames: mean luma of the first frame must be near black; last frame too when fading out
-          lum() { ffmpeg -v error "$@" -frames:v 1 -vf "scale=64:36,format=gray" -f rawvideo - | od -An -tu1 -v | tr -s ' ' '
-' | awk 'NF{s+=$1;n++}END{printf "%d", n?s/n:255}'; }
-          lastlum() { ffmpeg -v error -sseof -0.3 -i "out/${OUT}.mp4" -vf "scale=64:36,format=gray" -f rawvideo - | tail -c 2304 | od -An -tu1 -v | tr -s ' ' '
-' | awk 'NF{s+=$1;n++}END{printf "%d", n?s/n:255}'; }
+          avg() { od -An -tu1 -v | awk '{for(i=1;i<=NF;i++){s+=$i;n++}}END{printf "%d", n?s/n:255}'; }
+          lum() { ffmpeg -v error "$@" -frames:v 1 -vf "scale=64:36,format=gray" -f rawvideo - | avg; }
+          lastlum() { ffmpeg -v error -sseof -0.3 -i "out/${OUT}.mp4" -vf "scale=64:36,format=gray" -f rawvideo - | tail -c 2304 | avg; }
           L0=$(lum -i "out/${OUT}.mp4"); echo "first-frame luma $L0"
           [ "$L0" -le 20 ] || { echo "first frame is not black"; exit 1; }
           if [ "$FADEOUT" = "1" ]; then
