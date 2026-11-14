@@ -7,6 +7,7 @@ const express = require('express');
 const { Vlc } = require('./vlc');
 const { Controller } = require('./controller');
 const displays = require('./displays');
+const { VlcProc } = require('./vlcProc');
 
 const PORT = Number(process.env.PORT || 3000);
 const VLC_PORT = Number(process.env.VLC_PORT || 8080);
@@ -18,6 +19,9 @@ const cues = JSON.parse(fs.readFileSync(cuesFile, 'utf8'));
 
 const vlc = new Vlc({ port: VLC_PORT, password: VLC_PASSWORD, clipsDir });
 const ctl = new Controller({ cues, vlc });
+// launch.js exports VLC_SCREEN (display index, or "window"); unset when node is started by hand.
+const startScreen = /^\d+$/.test(process.env.VLC_SCREEN || '') ? Number(process.env.VLC_SCREEN) : null;
+const vlcProc = new VlcProc({ dir: __dirname, port: VLC_PORT, password: VLC_PASSWORD, screen: startScreen });
 
 const CLIP_EXTS = ['.mp4', '.mov', '.mkv', '.webm', '.m4v'];
 const MAX_CLIP_BYTES = 6 * 1024 ** 3;
@@ -57,6 +61,8 @@ function buildApp(controller, opts = {}) {
   const dir = opts.clipsDir || clipsDir;
   const cuesPath = opts.cuesFile || cuesFile;
   const maxBytes = opts.maxBytes || MAX_CLIP_BYTES;
+  const dsp = opts.displays || displays;
+  const proc = opts.proc || vlcProc;
   const busy = new Set();
   const info = (c, i) => {
     let size = null, mtime = null;
@@ -138,15 +144,34 @@ function buildApp(controller, opts = {}) {
   app.post('/api/fullscreen', async (req, res) => {
     try { await controller.vlc.toggleFullscreen(); res.json({ ok: true }); } catch (e) { res.json({ ok: false, error: e.message }); }
   });
+  // ?fresh=1 skips the 5 s cache: the "recheck screens" button, after plugging in a projector.
   app.get('/api/displays', async (req, res) => {
-    try { res.json(await displays.list()); } catch (e) { res.status(500).json({ error: e.message }); }
+    try { res.json(await dsp.list(req.query.fresh === '1')); } catch (e) { res.status(500).json({ error: e.message }); }
   });
-  // Preview of a display (default: first non-primary = the projector, else the primary).
+  // Which display the show plays on (null = windowed or unknown) and whether it can be moved from here.
+  app.get('/api/screen', (req, res) => res.json({ screen: proc.screen, canSwitch: proc.canSwitch() }));
+  app.post('/api/screen', express.json({ limit: '1kb' }), async (req, res) => {
+    const want = req.body && req.body.screen;
+    try {
+      let target = null;
+      if (want !== 'window') {
+        const ds = await dsp.list(true);
+        if (!Number.isInteger(want) || !ds.some((d) => d.index === want)) return res.status(400).json({ ok: false, error: 'unknown display ' + want });
+        target = want;
+      }
+      await proc.switchTo(target, () => controller.vlc.status().then(() => true, () => false));
+      const cur = controller.state.current;
+      if (cur) await controller.vlc.playCue(cur); // the new VLC is empty: put the current cue back
+      res.json({ ok: true, screen: proc.screen });
+    } catch (e) { res.status(e.status || 500).json({ ok: false, error: e.message }); }
+  });
+  // Preview of a display (default: the show screen, else first non-primary = the projector, else the primary).
   app.get('/api/screenshot.jpg', async (req, res) => {
     try {
-      const ds = await displays.list();
-      const wanted = req.query.screen === undefined ? (ds.find((d) => !d.primary) || ds[0]).index : Number(req.query.screen);
-      res.set({ 'Content-Type': 'image/jpeg', 'Cache-Control': 'no-store' }).send(await displays.capture(wanted));
+      const ds = await dsp.list();
+      const dflt = proc.screen !== null ? proc.screen : (ds.find((d) => !d.primary) || ds[0]).index;
+      const wanted = req.query.screen === undefined ? dflt : Number(req.query.screen);
+      res.set({ 'Content-Type': 'image/jpeg', 'Cache-Control': 'no-store' }).send(await dsp.capture(wanted));
     } catch (e) { res.status(503).json({ error: e.message }); }
   });
   app.post('/api/:action(next|prev|replay|pause)', async (req, res) =>

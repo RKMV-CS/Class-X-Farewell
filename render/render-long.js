@@ -73,6 +73,16 @@ async function renderNow(dir, N, audio, jobs) { // jobs: [{ out, range?: [first,
   }
 }
 
+// Page loops (songs, standby) start on an unrelated scene: black -> picture over FADE_S, baked into the first frames of the intro
+// (sharp on the PNGs, no extra encode). Frame 0 is black. Cue loops start on the previous clip's last frame, so they are left alone.
+const FADE_S = 0.6;
+async function fadeIn(dir, n) {
+  for (let i = 0; i < n; i++) {
+    const f = path.join(dir, pad(i + 1) + '.png');
+    fs.writeFileSync(f, await sharp(f).removeAlpha().linear(i / n, 0).png().toBuffer());
+  }
+}
+
 // ---- long loop clip ----
 async function longClip(key, def, capture) {
   const t0 = Date.now(), id = 'L_' + key, dir = path.join(FRAMES, id), metaF = path.join(dir, 'meta.json');
@@ -85,6 +95,7 @@ async function longClip(key, def, capture) {
     const r = await capture(id, def.page ? { steps: [{ state: 'stage', hold: tailF / FPS }], tail: 0 } : { steps: [{ cue: def.cue }], tail: tailF / FPS }, FRAMES);
     m = { N: r.frames, I: r.frames - tailF + settle, pf }; fs.writeFileSync(metaF, JSON.stringify(m));
   }
+  if (def.page && !m.faded) { await fadeIn(dir, Math.round(FADE_S * FPS)); m.faded = true; fs.writeFileSync(metaF, JSON.stringify(m)); } // meta.faded: a cached capture is darkened only once
   const tCap = Date.now(), { N, I } = m;
   // seam check: frame I+pf must equal frame I; last loop frame -> first must look like any consecutive pair
   const f0 = await raw(dir, I), fN = await raw(dir, I + pf), fL = await raw(dir, I + pf - 1), a = await raw(dir, I + 100), b = await raw(dir, I + 101);

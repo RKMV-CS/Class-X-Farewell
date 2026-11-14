@@ -6,6 +6,7 @@ const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 const displays = require('./displays');
+const { findVlc, vlcArgs } = require('./vlcProc');
 
 const DIR = __dirname;
 const BAT = path.join(DIR, 'start.generated.bat');
@@ -66,10 +67,9 @@ async function main() {
   if (Number(process.versions.node.split('.')[0]) >= 18) ok(`Node ${process.version}`);
   else fail(`Node ${process.version} is too old, need >= 18`);
 
-  const vlcTry = process.env.VLC_BIN ? [process.env.VLC_BIN] : VLC_CANDIDATES;
-  const vlcExe = vlcTry.find((p) => fs.existsSync(p));
+  const { exe: vlcExe, tried } = findVlc();
   if (vlcExe) ok(`VLC ${vlcExe}`);
-  else fail(`VLC not found (set VLC_BIN). Looked at: ${vlcTry.join(', ')}`);
+  else fail(`VLC not found (set VLC_BIN). Looked at: ${tried.join(', ')}`);
 
   if (fs.existsSync(path.join(DIR, 'node_modules', 'express'))) ok('node_modules/express');
   else fail('node_modules/express missing: run npm install');
@@ -99,7 +99,8 @@ async function main() {
   console.log('Displays:');
   for (const d of list) console.log(`  [${d.index}] ${d.name} ${d.width ?? '?'}x${d.height ?? '?'}${d.primary ? ' (primary)' : ''}`);
 
-  const fullscreen = !opt.windowed && list.length > 1;
+  // --screen N forces fullscreen on display N even with a single display (testing on the PC screen).
+  const fullscreen = !opt.windowed && (list.length > 1 || opt.screen !== null);
   let screen = null;
   if (fullscreen) {
     const projector = list.find((d) => !d.primary) || list[1];
@@ -110,13 +111,7 @@ async function main() {
     warn('only one display: VLC will open in a window, not fullscreen');
   }
 
-  const vlcArgs = [
-    '--extraintf http', '--http-host 127.0.0.1', `--http-port ${vlcPort}`, '--http-password %VLC_PASSWORD%',
-    ...(fullscreen ? ['--fullscreen'] : []),
-    // --no-qt-video-autoresize: stops the window resizing itself to each clip (seen as 1920x1080 -> 1936x1056 -> back)
-    '--no-video-title-show', '--no-osd', '--play-and-pause', '--no-playlist-autostart', '--no-qt-video-autoresize',
-    ...(fullscreen ? [`--qt-fullscreen-screennumber=${screen}`] : []),
-  ].join(' ');
+  const vlcArgStr = vlcArgs({ port: vlcPort, password: '%VLC_PASSWORD%', screen: fullscreen ? screen : null }).join(' ');
 
   // Only this VLC's pid is killed, never `taskkill /im vlc.exe`, so the user's own VLC windows survive.
   const bat = [
@@ -127,8 +122,9 @@ async function main() {
     'if "%VLC_PASSWORD%"=="" set VLC_PASSWORD=farewell',
     `set VLC_PORT=${vlcPort}`,
     `set PORT=${port}`,
+    `set VLC_SCREEN=${fullscreen ? screen : 'window'}`, // server.js shows it as the current show screen
     'del vlc.pid >nul 2>&1',
-    `powershell -NoProfile -Command "(Start-Process -FilePath '${psq(vlcExe)}' -ArgumentList '${vlcArgs}' -PassThru).Id" > vlc.pid`,
+    `powershell -NoProfile -Command "(Start-Process -FilePath '${psq(vlcExe)}' -ArgumentList '${vlcArgStr}' -PassThru).Id" > vlc.pid`,
     'timeout /t 3 >nul',
     'node server.js',
     'set VLC_PID=',

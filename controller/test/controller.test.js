@@ -195,3 +195,23 @@ test('cue mode toggle persists to cues.json', async (t) => {
   assert.equal(e.saved().find((c) => c.id === '07_ad_video').mode, 'loop');
   assert.equal(e.saved().length, cues.length);
 });
+
+test('screen switch: validates the display, moves VLC, replays the current cue; fresh list bypasses cache', async (t) => {
+  const moves = [], lists = [];
+  const fakeDisplays = { list: async (fresh) => { lists.push(fresh); return [{ index: 0, primary: true }, { index: 1, primary: false }]; }, capture: async () => Buffer.alloc(1) };
+  const fakeProc = { screen: null, canSwitch: () => true, switchTo: async (s) => { moves.push(s); fakeProc.screen = s; } };
+  const { base, c } = await clipEnv(t, { displays: fakeDisplays, proc: fakeProc });
+  const post = (screen) => fetch(base + '/api/screen', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ screen }) });
+  assert.deepEqual(await (await fetch(base + '/api/screen')).json(), { screen: null, canSwitch: true });
+  await fetch(base + '/api/displays?fresh=1');
+  assert.equal(lists.at(-1), true);
+  assert.equal((await post(7)).status, 400);                      // not a connected display
+  assert.equal((await post('1')).status, 400);                    // must be an integer
+  assert.deepEqual(moves, []);
+  await c.handle('next', 'test');
+  assert.equal((await post(1)).status, 200);
+  assert.deepEqual(moves, [1]);
+  assert.equal((await (await fetch(base + '/api/screen')).json()).screen, 1);
+  assert.equal((await post('window')).status, 200);
+  assert.deepEqual(moves, [1, null]);
+});
