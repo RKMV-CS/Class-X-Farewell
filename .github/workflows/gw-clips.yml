@@ -1,0 +1,121 @@
+name: Guess Who clips
+
+# Manual. Renders ONLY the Guess Who rounds (mystery/reveal/dismiss per kid) on 12 machines at CRF 10 / veryslow, then names them as
+# controller clips (artifact `controller-clips-gw`). No loops, no NDPify scenes, no joined show video, no release.
+# Test run: only=_gw5,_gw2 renders just those rounds and uploads a contact-sheet artifact `preview` instead.
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to render"
+        required: true
+      only:
+        description: "Segment id fragments, comma separated. Default _gw = every Guess Who round (full clip set)"
+        required: false
+        default: "_gw"
+
+env:
+  SHARDS: 12
+  FULL_CRF: 10
+  FULL_POOL: 1
+
+jobs:
+  render:
+    runs-on: windows-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: true
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Render deps
+        working-directory: render
+        run: |
+          npm ci
+          npx playwright-core install chromium
+      - name: Render shard ${{ matrix.shard }}/${{ env.SHARDS }}
+        shell: bash
+        env:
+          ONLY: ${{ inputs.only }}
+        run: |
+          node review/server.js 4000 &
+          sleep 3
+          cd render
+          node render-full.js --shard=${{ matrix.shard }}/$SHARDS --only=$ONLY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: segments-${{ matrix.shard }}
+          path: render/out/full/*.mp4
+          if-no-files-found: ignore
+          compression-level: 0
+          retention-days: 2
+
+  clips:
+    needs: render
+    if: inputs.only == '_gw'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: segments-*
+          path: clips-in/segments
+          merge-multiple: true
+      - name: ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Collect Guess Who clips
+        run: |
+          node render/collect-clips.test.js
+          node render/collect-clips.js clips-in/segments - controller-clips controller/cues.json
+          ls -l controller-clips
+      - name: Seam check (Guess Who cuts)
+        continue-on-error: true
+        run: node render/check-seams.js controller-clips controller/cues.json | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: controller-clips-gw
+          path: controller-clips/*.mp4
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 3
+
+  preview:
+    needs: render
+    if: always() && needs.render.result == 'success'
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Render deps (ffmpeg + sharp only)
+        working-directory: render
+        run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: segments-*
+          path: preview-in/segments
+          merge-multiple: true
+      - name: Contact sheet
+        shell: bash
+        run: |
+          mkdir -p preview-out
+          node render/preview.js preview-in preview-out/preview.jpg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: preview
+          path: preview-out/*
+          if-no-files-found: warn
+          retention-days: 3
