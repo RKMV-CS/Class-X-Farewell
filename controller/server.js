@@ -6,6 +6,7 @@ const path = require('path');
 const express = require('express');
 const { Vlc } = require('./vlc');
 const { Controller } = require('./controller');
+const { CLIP_EXTS } = require('./cueState');
 const displays = require('./displays');
 const { VlcProc } = require('./vlcProc');
 
@@ -23,7 +24,6 @@ const ctl = new Controller({ cues, vlc });
 const startScreen = /^\d+$/.test(process.env.VLC_SCREEN || '') ? Number(process.env.VLC_SCREEN) : null;
 const vlcProc = new VlcProc({ dir: __dirname, port: VLC_PORT, password: VLC_PASSWORD, screen: startScreen });
 
-const CLIP_EXTS = ['.mp4', '.mov', '.mkv', '.webm', '.m4v'];
 const MAX_CLIP_BYTES = 6 * 1024 ** 3;
 
 // Atomic: write beside the target, then rename over it. Keeps the one-cue-per-line layout of cues.json.
@@ -57,6 +57,10 @@ function receive(req, file, max) {
   });
 }
 
+const plainName = (f) => typeof f === 'string' && f.length > 0 && f.length <= 200 && !/[\\/\0]/.test(f) && !f.startsWith('.');
+const hasClipExt = (f) => CLIP_EXTS.includes(path.extname(f).toLowerCase());
+const cleanLabel = (v) => (typeof v === 'string' && v.trim().length >= 1 && v.trim().length <= 120 ? v.trim() : null);
+
 function buildApp(controller, opts = {}) {
   const dir = opts.clipsDir || clipsDir;
   const cuesPath = opts.cuesFile || cuesFile;
@@ -64,6 +68,21 @@ function buildApp(controller, opts = {}) {
   const dsp = opts.displays || displays;
   const proc = opts.proc || vlcProc;
   const busy = new Set();
+  const undo = []; // previous sequences (plain copies), newest last; lost on restart on purpose, git has cues.json history
+  const copyList = (l) => l.map((c) => ({ ...c }));
+  // Every sequence edit goes through here: validate + swap (throws, nothing changed), save atomically, remember for undo.
+  // A failed save puts the old sequence back so memory and cues.json never disagree.
+  function commit(next, { remember = true } = {}) {
+    const st = controller.state;
+    const prev = copyList(st.cues);
+    st.setCues(next);
+    try { saveCues(cuesPath, st.cues); }
+    catch (e) { st.setCues(prev); throw Object.assign(new Error('could not save cues.json: ' + e.message), { status: 500 }); }
+    if (remember) { undo.push(prev); if (undo.length > 20) undo.shift(); }
+  }
+  const edit = (res, fn) => {
+    try { fn(); } catch (e) { return res.status(e.status || 400).json({ ok: false, error: e.message }); }
+  };
   const info = (c, i) => {
     let size = null, mtime = null;
     try { const s = fs.statSync(path.join(dir, c.file)); size = s.size; mtime = s.mtimeMs; } catch (e) { /* missing */ }
@@ -72,18 +91,122 @@ function buildApp(controller, opts = {}) {
   const app = express();
   app.use(express.static(path.join(__dirname, 'public')));
   app.get('/api/state', (req, res) => res.json(controller.snapshot()));
-  app.get('/api/cues', (req, res) => res.json({ index: controller.state.index, cues: controller.state.cues.map(info) }));
-  // Per-cue mode (hold|loop), persisted to cues.json. A running cue picks it up via the loop watcher / next play.
-  app.post('/api/cue/:id', express.json({ limit: '1kb' }), (req, res) => {
+  app.get('/api/cues', (req, res) => res.json({ index: controller.state.index, rev: controller.state.rev, cues: controller.state.cues.map(info) }));
+  const usedFiles = () => new Set(controller.state.cues.map((c) => c.file));
+  // Per-cue mode (hold|loop) and/or label, persisted to cues.json. A running cue picks the mode up via the loop watcher / next play.
+  app.post('/api/cue/:id', express.json({ limit: '4kb' }), (req, res) => {
     const list = controller.state.cues;
     const i = list.findIndex((c) => c.id === req.params.id);
     if (i < 0) return res.status(404).json({ ok: false, error: 'unknown cue id' });
-    const mode = req.body && req.body.mode;
+    const body = req.body || {};
+    const patch = {};
+    if ('mode' in body) {
+      if (body.mode !== 'hold' && body.mode !== 'loop') return res.status(400).json({ ok: false, error: 'mode must be hold or loop' });
+      patch.mode = body.mode;
+    }
+    if ('label' in body) {
+      const label = cleanLabel(body.label);
+      if (!label) return res.status(400).json({ ok: false, error: 'label must be 1-120 characters' });
+      patch.label = label;
+    }
+    if (!Object.keys(patch).length) return res.status(400).json({ ok: false, error: 'send mode and/or label' });
+    edit(res, () => {
+      commit(list.map((c, k) => (k === i ? { ...c, ...patch } : c)));
+      res.json({ ok: true, cue: info(controller.state.cues[i], i) });
+    });
+  });
+  // Reorder: body {ids:[...]} must list every current cue id exactly once. The playing cue stays current.
+  app.put('/api/cues/order', express.json({ limit: '64kb' }), (req, res) => {
+    const ids = req.body && req.body.ids;
+    const byId = new Map(controller.state.cues.map((c) => [c.id, c]));
+    if (!Array.isArray(ids) || ids.length !== byId.size || new Set(ids).size !== ids.length || !ids.every((x) => byId.has(x)))
+      return res.status(400).json({ ok: false, error: 'ids must list every cue id exactly once' });
+    edit(res, () => { commit(ids.map((x) => byId.get(x))); res.json({ ok: true, index: controller.state.index, rev: controller.state.rev }); });
+  });
+  // Add a cue from a video already in clips/ (see /api/library). Body {file, label?, mode?, after?}.
+  app.post('/api/cues', express.json({ limit: '4kb' }), (req, res) => {
+    const b = req.body || {};
+    if (!plainName(b.file) || !hasClipExt(b.file)) return res.status(400).json({ ok: false, error: 'file must be a plain file name with extension ' + CLIP_EXTS.join(' ') });
+    if (!fs.existsSync(path.join(dir, b.file)) || !fs.statSync(path.join(dir, b.file)).isFile()) return res.status(404).json({ ok: false, error: 'no such file in clips/' });
+    if (usedFiles().has(b.file)) return res.status(409).json({ ok: false, error: 'that clip is already in the sequence' });
+    const mode = b.mode === undefined ? 'hold' : b.mode;
     if (mode !== 'hold' && mode !== 'loop') return res.status(400).json({ ok: false, error: 'mode must be hold or loop' });
-    const prev = list[i].mode;
-    list[i].mode = mode;
-    try { saveCues(cuesPath, list); } catch (e) { list[i].mode = prev; return res.status(500).json({ ok: false, error: 'could not save cues.json: ' + e.message }); }
-    res.json({ ok: true, cue: info(list[i], i) });
+    const stem = path.parse(b.file).name;
+    const label = b.label === undefined ? stem.replace(/[_]+/g, ' ') : cleanLabel(b.label);
+    if (!label) return res.status(400).json({ ok: false, error: 'label must be 1-120 characters' });
+    const list = controller.state.cues;
+    let at = list.length;
+    if (b.after !== undefined && b.after !== null) {
+      const k = list.findIndex((c) => c.id === b.after);
+      if (k < 0) return res.status(400).json({ ok: false, error: 'unknown "after" cue id' });
+      at = k + 1;
+    }
+    const ids = new Set(list.map((c) => c.id));
+    const base = stem.replace(/[^A-Za-z0-9_.-]/g, '_');
+    let id = base;
+    for (let n = 2; ids.has(id); n++) id = base + '_' + n;
+    edit(res, () => {
+      const next = list.slice();
+      next.splice(at, 0, { id, file: b.file, mode, label });
+      commit(next);
+      res.json({ ok: true, cue: info(controller.state.cues[at], at) });
+    });
+  });
+  // Remove from the sequence only; the video file stays in clips/ (it shows up in the library again).
+  app.delete('/api/cue/:id', (req, res) => {
+    const list = controller.state.cues;
+    const i = list.findIndex((c) => c.id === req.params.id);
+    if (i < 0) return res.status(404).json({ ok: false, error: 'unknown cue id' });
+    edit(res, () => { commit(list.filter((_, k) => k !== i)); res.json({ ok: true, total: controller.state.cues.length }); });
+  });
+  app.post('/api/undo', (req, res) => {
+    if (!undo.length) return res.status(409).json({ ok: false, error: 'nothing to undo' });
+    edit(res, () => {
+      // keep each cue's current file: a video replaced since then must not be rolled back to a name that no longer exists
+      const files = new Map(controller.state.cues.map((c) => [c.id, c.file]));
+      commit(copyList(undo[undo.length - 1]).map((c) => ({ ...c, file: files.get(c.id) || c.file })), { remember: false });
+      undo.pop();
+      res.json({ ok: true, left: undo.length, total: controller.state.cues.length });
+    });
+  });
+  // Videos in clips/ that no cue uses (candidates for "Add clip").
+  app.get('/api/library', async (req, res) => {
+    try {
+      const used = usedFiles();
+      const out = [];
+      for (const ent of await fsp.readdir(dir, { withFileTypes: true })) {
+        if (!ent.isFile() || ent.name.startsWith('.') || !hasClipExt(ent.name) || used.has(ent.name)) continue;
+        const s = await fsp.stat(path.join(dir, ent.name));
+        out.push({ file: ent.name, size: s.size, mtime: s.mtimeMs });
+      }
+      out.sort((a, b) => a.file.localeCompare(b.file));
+      res.json({ ok: true, files: out });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+  });
+  // Upload a new video into clips/ without a cue (never overwrites an existing file). Raw body, name in x-filename.
+  app.post('/api/library', async (req, res) => {
+    const fail = (code, error) => { res.set('Connection', 'close'); return res.status(code).json({ ok: false, error }); };
+    let name = null;
+    try { name = decodeURIComponent(req.get('x-filename') || ''); } catch (e) { /* rejected below */ }
+    if (!plainName(name) || !hasClipExt(name)) return fail(400, 'x-filename must be a plain file name with extension ' + CLIP_EXTS.join(' '));
+    const safe = name.replace(/[^A-Za-z0-9 _.()-]/g, '_');
+    const ext = path.extname(safe).toLowerCase();
+    if (Number(req.get('content-length') || 0) > maxBytes) return fail(413, 'file too large (limit 6 GB)');
+    const target = path.join(dir, safe);
+    if (fs.existsSync(target) || busy.has('lib:' + safe)) return fail(409, 'a clip with that name already exists: rename the file and try again');
+    busy.add('lib:' + safe);
+    const tmpDir = path.join(dir, '.tmp'), tmp = path.join(tmpDir, `lib.${Date.now()}.part`);
+    try {
+      await fsp.mkdir(tmpDir, { recursive: true });
+      if (!(await receive(req, tmp, maxBytes))) throw Object.assign(new Error('empty upload'), { status: 400 });
+      if (!(await looksLikeVideo(tmp, ext))) throw Object.assign(new Error('file does not look like a ' + ext + ' video'), { status: 400 });
+      if (fs.existsSync(target)) throw Object.assign(new Error('a clip with that name already exists'), { status: 409 });
+      await fsp.rename(tmp, target);
+      res.json({ ok: true, file: safe, size: fs.statSync(target).size });
+    } catch (e) {
+      await fsp.unlink(tmp).catch(() => {});
+      fail(e.status || 500, e.status ? e.message : 'could not store the file: ' + e.message);
+    } finally { busy.delete('lib:' + safe); }
   });
   // Replace a cue's video. Raw body (no multipart), filename in x-filename (only its extension is used).
   app.post('/api/clip/:id', async (req, res) => {
@@ -121,11 +244,14 @@ function buildApp(controller, opts = {}) {
         moved.push([b, p]);
       }
       await fsp.rename(tmp, newPath);
-      if (newFile !== prevFile) {
-        cue.file = newFile;
-        try { saveCues(cuesPath, list); } catch (e) { await fsp.unlink(newPath).catch(() => {}); throw e; }
+      // The sequence may have been edited while the upload ran: change the live cue and save the live list.
+      const live = controller.state.cues.find((c) => c.id === cue.id);
+      if (live && newFile !== prevFile) {
+        live.file = newFile;
+        try { saveCues(cuesPath, controller.state.cues); } catch (e) { live.file = prevFile; await fsp.unlink(newPath).catch(() => {}); throw e; }
       }
-      res.json({ ok: true, cue: info(cue, i) });
+      const at = controller.state.cues.findIndex((c) => c.id === cue.id);
+      res.json({ ok: true, cue: info(live || cue, at < 0 ? i : at) });
     } catch (e) {
       cue.file = prevFile;
       for (const [b, p] of moved.reverse()) await fsp.rename(b, p).catch(() => {});

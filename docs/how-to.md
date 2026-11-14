@@ -9,8 +9,9 @@ node launch.js --dry-run     # Node, VLC, clips, ports, screens. Starts nothing.
 ```
 Every file named in `cues.json` must exist in `controller/clips/`, and no clip should be unused.
 
-## Reorder or relabel the show
-Edit `controller/cues.json` only (move entries, change `label`). No render needed. Keep row numbers at the start of labels matching the run-of-show sheet. Then run the checks above.
+## Reorder, add, remove or relabel the show
+Easiest: the dashboard, **Edit sequence** (drag to reorder, Rename, Remove, Add clip or upload video, Undo; see [show-day-guide.md](show-day-guide.md#7-changing-the-sequence-before-the-show)). It saves to `controller/cues.json`; commit that file (via a PR) to keep the new order.
+By hand: edit `controller/cues.json` (move entries, change `label`). No render needed. Keep row numbers at the start of labels matching the run-of-show sheet (the dashboard does not renumber labels). Then run the checks above.
 
 ## Switch a cue between hold and loop
 Change `"mode"` in `cues.json` (or use the dashboard's mode toggle, which saves to `cues.json`). `hold` freezes on the last frame, `loop` repeats until NEXT.
@@ -40,6 +41,12 @@ Videos are never committed. Their Drive ids are the repo secret `STUDENT_VIDEO_I
 - Everything else (scenes, songs, ads, standby): `release.yml`. A push to `release` renders all and publishes a **public** release plus artifact `controller-clips` (about an hour). Test one loop first with a manual run: `-f only=song03` (makes a `preview` sheet).
 - Student videos: `student-videos.yml`.
 Artifacts expire in 1-3 days, so download straight away.
+
+**Keep the finished set downloadable.** The finished clips live in a release of the private repo named in `controller/clips.manifest.json` (so a student can run `npm run setup`). After you produce a new clip set:
+1. Put the final files in `controller/clips/` and run the checks above.
+2. Create a new release (or reuse the tag) and upload: `gh release create clips-<date> controller/clips/*.mp4 -R <source repo> --title "Finished clips" --notes "..."` (or `gh release upload <tag> <files> --clobber -R <source repo>`). Each file must be under 2 GiB.
+3. `cd controller && node setup.js --write-manifest --source <owner/repo> --tag <tag>`, then commit `controller/clips.manifest.json` through a PR.
+4. Check: `node setup.js --check` says every clip matches.
 
 ## Prepare for the show
 Run the checks, copy `controller/clips/` to the laptop's local disk, rehearse on the real projector (see [show-day-guide.md](show-day-guide.md)), copy everything to the backup laptop.

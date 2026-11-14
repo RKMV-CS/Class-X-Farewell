@@ -21,7 +21,7 @@ You will work with an AI coding assistant (**Claude Code** or **OpenAI Codex**).
 | [Claude Code](https://claude.com/claude-code) **or** [Codex CLI](https://github.com/openai/codex) | your AI assistant | `claude --version` / `codex --version` |
 | ffmpeg (optional) | only to make dummy practice clips | `ffmpeg -version` |
 
-You also need **access to the GitHub repository** (ask the owner to add you as a collaborator) and, for student videos, the owner must run those workflows (the secret is theirs).
+You also need **access to the GitHub repository** (ask the owner to add you as a collaborator) and, to download the finished clips, **access to the private clips repo** `codewithpom/ndpify-farewell` (also a collaborator invite) plus `gh auth login`. For new student videos the owner must run the workflow (the secret is theirs).
 
 ## 3. Get the code and check it works
 
@@ -33,6 +33,8 @@ cd ..
 ```
 
 Open `prototype/index.html` in Chrome, press `F` (fullscreen) and `Space` (next scene) to see the visuals.
+
+**Download and go (finished show).** In the `controller` folder run `npm run setup` (or double-click `setup.bat` in the repo root on Windows). It installs the dependencies, downloads the 71 finished clips (8.4 GB, keep 10 GB free) from the private release, checks every file and every cue, and tells you when it is ready. If it stops, run it again: it continues where it stopped. Then `node launch.js`. `node setup.js --check` verifies the clips offline.
 
 Practice the controller without real clips:
 
@@ -65,6 +67,7 @@ Copy, replace the `<...>` parts. The assistant knows the recipes in `docs/how-to
 - **Fix a photo's crop**: "In the Guess Who data for `<name>`, the Now photo cuts off the face. Download the latest `photo-contact-sheet` artifact if needed, adjust the object-position, then test-render only that round on GitHub (`gw-clips.yml` with `only=_gw<N>`), download the `preview` artifact and show me the picture."
 - **Replace a student video**: "I have a new Drive link for `<video name>`. Tell me exactly which secret to update and which workflow to run. Do not write the link anywhere in the repo."
 - **Add a kid**: "Add a new Guess Who kid following docs/how-to.md. Ask me for the photos and the position in the order."
+- **Change the order of the show**, no coding: open the dashboard (`node launch.js`, then http://localhost:3000), press **Edit sequence**, drag the handle to reorder, use Rename / Remove / Add clip. Details in [show-day-guide.md](show-day-guide.md#7-changing-the-sequence-before-the-show).
 - **Prepare for the show**: "Run the checklist from docs/show-day-guide.md that can be checked from code: tests, dry run, list any missing or unused clips."
 - **Something looks wrong**: "Here is a screenshot / error. Find the cause before changing anything and explain it to me first."
 

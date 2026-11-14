@@ -42,13 +42,13 @@ prototype/index.html  --(CI: Playwright frame capture + ffmpeg)-->  MP4 clips  -
 | `prototype/img/guesswho/` | Converted photos `<slug>_<slot>.jpg` and `sources.json` (Drive file ids of the photos). Originals/PNGs are gitignored. |
 | `review/` | Review hub (`node review/server.js 4000`): serves the prototype on `http://localhost:4000/prototype/index.html`; CI and renders use it. |
 | `render/` | Node render pipeline. `capture.js` (deterministic frame capture), `render-full.js` (segments, sharding, join), `render-long.js` + `loops.js` (17-minute seamless loops), `collect-clips.js` (segments -> controller clip names), `check-seams.js`, `prep-photos.js`, `preview.js`, `shard-weights.json`. |
-| `controller/` | Express server + VLC driver. `cues.json` (order), `cueState.js` (pure state machine), `controller.js` (debounce, loop watcher), `vlc.js` (VLC HTTP client), `vlcProc.js`/`launch.js` (start VLC + server), `displays.js` (screens), `public/index.html` (operator dashboard), `test/`. |
+| `controller/` | Express server + VLC driver. `cues.json` (order; also written by the dashboard's sequence editor), `cueState.js` (pure state machine + `validateCues`/`setCues`), `controller.js` (debounce, loop watcher), `vlc.js` (VLC HTTP client), `vlcProc.js`/`launch.js` (start VLC + server), `displays.js` (screens), `public/index.html` (operator dashboard with Edit sequence), `setup.js` + `clips.manifest.json` (download the finished clips), `test/`. |
 | `.github/workflows/` | `ci.yml`, `release.yml`, `gw-clips.yml`, `prep-photos.yml`, `student-videos.yml` (see [docs/technical-guide.md](docs/technical-guide.md#ci-workflows)). |
 | `docs/` | Human + LLM documentation. |
 
 ## 4. Contracts you must keep in sync
 
-- **cues.json schema**: array of `{ id, file, mode: "hold" | "loop", label }`. `file` is under `controller/clips/`. `hold` = play then freeze on last frame. `loop` = repeat until the operator moves on (controller restarts it when VLC parks it at the end). Every `file` must exist in `controller/clips/`; every clip should be used.
+- **cues.json schema**: array of `{ id, file, mode: "hold" | "loop", label }`. `id` values are unique; `file` is a plain file name (no folders) under `controller/clips/` with a video extension. The dashboard (Edit sequence) rewrites this file atomically, so after a dashboard edit `git diff controller/cues.json` shows the operator's order; do not "fix" it back unless asked. Ids are identifiers, not positions: reordering never renames files. Labels start with the planning-sheet row number and are not auto-renumbered. `hold` = play then freeze on last frame. `loop` = repeat until the operator moves on (controller restarts it when VLC parks it at the end). Every `file` must exist in `controller/clips/`; every clip should be used.
 - **Guess Who naming**: kid `k` (1-based, in `guessWho.students` order) has three cues with ids `${12 + 3*(k-1) + 0}_gw${k}_guess`, `${... + 1}_gw${k}_reveal`, `${... + 2}_gw${k}_off`. The file is `<id>.mp4`. `render/collect-clips.js:controllerName` builds these names from render segments `NNN_gwK_(mystery|reveal|dismiss)`.
 - **Kid count** is derived from `cues.json` (count of `_gwK_guess` ids). `render-full.js` and `collect-clips.js` read it; the prototype reads `guessWho.students.length`. So `cues.json` and `guessWho.students` must have the same number of kids in the same order.
 - **Photo files**: `prep-photos.js` `SLUGS` / `SLOTS` list allowed `slug` and `slot` values. `sources.json` entries `{id, file, slug, slot}` must use them. Output `<slug>_<slot>.jpg` must match the paths in `guessWho.students`.
@@ -59,6 +59,9 @@ prototype/index.html  --(CI: Playwright frame capture + ffmpeg)-->  MP4 clips  -
 ## 5. Commands
 
 ```bash
+# finished show: install + download the 71 clips from the private release + verify (needs gh logged in)
+cd controller && npm run setup        # or double-click setup.bat; node setup.js --check verifies offline
+
 # controller (runs anywhere with Node 18+; Node 22 in CI)
 cd controller && npm ci && npm test
 node launch.js --dry-run            # checks Node, VLC, express, clips, free ports, displays; starts nothing
@@ -81,6 +84,10 @@ gh run watch <run-id> ; gh run download <run-id> -n controller-clips-gw -D contr
 ```
 
 `workflow_dispatch` workflows only appear in `gh workflow run` if the workflow file exists **on the default branch (`main`)**. Merge workflow changes to `main` first (PR), then dispatch with `-f branch=<your branch>`.
+
+## 5b. Finished clips live in a private release, not in git
+
+The 71 finished clips (about 8.4 GB, each over git's 100 MB limit, and they contain student videos) are assets of the release named in `controller/clips.manifest.json` (`source` repo + `tag`) in a **private** repo. `controller/setup.js` downloads and verifies them. Never commit clips, never upload them to a public repo or release. After refreshing clips: upload to the private release, run `node setup.js --write-manifest`, commit the manifest (see [docs/how-to.md](docs/how-to.md#refresh-the-clip-set)). `CI` has no clips, so tests must not depend on `controller/clips/`.
 
 ## 6. Git flow
 

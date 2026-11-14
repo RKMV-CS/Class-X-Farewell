@@ -76,7 +76,10 @@ async function main() {
 
   const cues = JSON.parse(fs.readFileSync(path.join(DIR, 'cues.json'), 'utf8'));
   const missing = cues.map((c) => c.file).filter((f) => !fs.existsSync(path.join(DIR, 'clips', f)));
-  if (missing.length) warn(`${missing.length} clip(s) missing under clips/: ${missing.join(', ')}`);
+  if (missing.length) {
+    warn(`${missing.length} clip(s) missing under clips/: ${missing.join(', ')}`);
+    if (fs.existsSync(path.join(DIR, 'clips.manifest.json'))) warn('Download the finished clips with: npm run setup   (needs gh logged in; see docs/getting-started.md)');
+  }
   else ok(`all ${cues.length} clips present`);
   if (bad) process.exit(1);
 

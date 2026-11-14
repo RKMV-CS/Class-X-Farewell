@@ -27,12 +27,12 @@ Software on the laptop: **VLC**, **Node.js** (version 18 or newer). Nothing else
 
 ## 3. Before the day (checklist)
 
-- [ ] All clips are in `controller/clips/` on the laptop's local disk.
+- [ ] All clips are in `controller/clips/` on the laptop's local disk. Not there yet? Double-click `setup.bat` (needs internet, the `gh` login and about 10 GB free; it downloads and checks everything).
 - [ ] Ask your tech helper to run `node launch.js --dry-run` in the `controller` folder. It must say all clips are present and nothing is missing.
 - [ ] Do a **full run-through on the real projector** with the real clips, including the loops and the phone.
 - [ ] Check the **sound level** through the hall speakers using a student video.
 - [ ] Check the clicker works (press it, the cue should move).
-- [ ] Copy the folder to the backup laptop and test it there too.
+- [ ] Final order decided (see section 7), then copy the folder (including `controller/cues.json`) to the backup laptop and test it there too. The backup laptop can also run `setup.bat` to fetch the clips itself.
 - [ ] Rehearse with the kids and the printed cue list at least once.
 
 ## 4. Starting the show software
@@ -93,7 +93,21 @@ Fourteen kids x 3 = 42 presses, so go calmly and watch the NEXT label.
 
 The exact list of all 74 cues is `controller/cues.json`; the dashboard shows it in order.
 
-## 7. If something goes wrong
+## 7. Changing the sequence before the show
+
+You can reorder, add and remove cues without touching any file. **Do this at home or before the doors open, never while the show runs.**
+
+1. Open the dashboard and press **Edit sequence** (top right of the cue list). The button turns amber and tapping a cue no longer jumps: it is the editing mode.
+2. **Reorder**: press and hold the **Drag** handle of a cue, move it up or down (the amber line shows where it will land), let go. On a phone, hold the handle with a finger. The arrows (up and down) move a cue one place.
+3. **Rename**: changes the text shown in the list and on the NEXT line. The leading numbers in the labels are the rows of the planning sheet and are not renumbered by themselves; the white number on the left is the real position.
+4. **Remove**: takes the cue out of the show. Its video file stays in the clips folder, so nothing is lost. The cue that is playing right now cannot be removed.
+5. **Add clip or upload video**: pick a video that is already in the clips folder but not in the show, or upload a new one (mp4, mov, mkv, webm, m4v; 1920x1080 works best). Choose where it goes with "Insert", then drag to fine-tune.
+6. **Undo** brings back the last change (up to 20).
+7. Press **Done editing** to go back to show mode. Every change is saved at once in `controller/cues.json`.
+
+To keep your new order for the backup laptop, copy `controller/cues.json` to it (or commit it). To go back to the shipped order: `git checkout controller/cues.json`.
+
+## 8. If something goes wrong
 
 | Problem | What to do |
 |---|---|
@@ -108,6 +122,6 @@ The exact list of all 74 cues is `controller/cues.json`; the dashboard shows it 
 
 Do not click around in VLC itself and do not close its window. Leave the console window open for the whole show.
 
-## 8. After the show
+## 9. After the show
 
 Press **Q** in the console window. VLC closes by itself. Copy the folder somewhere safe if the school wants a record, but remember: it contains the students' photos and videos, so do not post it publicly.
